@@ -1,0 +1,7 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Tooling / dependencies
+node_modules/
+.kilo/node_modules/

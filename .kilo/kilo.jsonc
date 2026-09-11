@@ -1,0 +1,12 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "snapshot": false,
+  "mcp": {
+    "playwright_mcp": {
+      "enabled": true
+    },
+    "atlassian": {
+      "enabled": true
+    }
+  }
+}
