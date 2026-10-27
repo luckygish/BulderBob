@@ -1,0 +1,35 @@
+const paths: Record<string, string> = {
+  logo: '<path d="M4 20V9l8-5 8 5v11H4Z"/><path d="M9 20v-7h6v7M2 9 12 3l10 6"/>',
+  overview: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
+  jobs: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+  construction: '<path d="M3 21h18M5 21V10l7-6 7 6v11M9 21v-6h6v6"/><path d="m17 4 4 4M19 2l3 3"/>',
+  market: '<path d="M3 10h18M5 10v10h14V10M4 4h16l1 6H3l1-6Z"/><path d="M9 14h6"/>',
+  hr: '<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 4a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v2"/>',
+  equipment: '<path d="M3 17h14v4H3zM5 17v-5h7l3 5M12 12V6h5l4 6v5h-4"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/>',
+  tech: '<path d="M9 18h6M10 22h4M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 4H9c0-2 0-3-1-4Z"/><path d="M12 2V0M4.9 4.9 3.5 3.5M19.1 4.9l1.4-1.4"/>',
+  bank: '<path d="m3 9 9-6 9 6H3ZM5 20h14M3 23h18M6 9v11M10 9v11M14 9v11M18 9v11"/>',
+  competitors: '<path d="M8 21H4v-9h4v9ZM14 21h-4V3h4v18ZM20 21h-4V8h4v13Z"/>',
+  journal: '<path d="M5 3h14a2 2 0 0 1 2 2v16H7a4 4 0 0 1-4-4V5a2 2 0 0 1 2-2Z"/><path d="M7 17h14M8 7h9M8 11h9"/>',
+  pause: '<path d="M8 5v14M16 5v14"/>',
+  play: '<path d="m8 5 11 7-11 7V5Z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
+  trend: '<path d="m3 17 6-6 4 4 8-9M15 6h6v6"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  wallet: '<path d="M3 6a3 3 0 0 1 3-3h13v18H5a2 2 0 0 1-2-2V6Z"/><path d="M3 7h16M15 12h6v5h-6a2.5 2.5 0 0 1 0-5Z"/>',
+  star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2-5.5-2.9-5.5 2.9 1-6.2L3 9.6l6.2-.9L12 3Z"/>',
+  check: '<path d="m5 12 4 4L19 6"/>',
+  alert: '<path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5M12 18v.1"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  close: '<path d="m6 6 12 12M18 6 6 18"/>',
+  chevron: '<path d="m9 6 6 6-6 6"/>',
+  truck: '<path d="M3 5h11v12H3zM14 9h4l3 4v4h-7V9Z"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/>',
+  box: '<path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/>',
+  hardhat: '<path d="M4 15a8 8 0 0 1 16 0M2 15h20v4H2zM9 7V4h6v3"/>',
+  crane: '<path d="M5 21h8M9 21V3h4M3 7h18M13 3l8 4M17 7v7M15 14h4v4h-4zM6 7l3-4 3 4"/>',
+  document: '<path d="M6 2h8l4 4v16H6V2Z"/><path d="M14 2v5h5M9 12h6M9 16h6"/>',
+}
+
+export function icon(name: string, className = ''): string {
+  return `<svg class="icon ${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] ?? paths.box}</svg>`
+}

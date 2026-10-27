@@ -4,4 +4,5 @@
 
 # Tooling / dependencies
 node_modules/
+dist/
 .kilo/node_modules/
