@@ -758,7 +758,8 @@ button.company-chip:hover { background: rgba(255,255,255,.085); }
 .load-actions { margin-top: 22px; }
 
 /* Exit and overlay */
-.exit-save-row { margin-top: 14px; display: flex; justify-content: flex-end; }
+.nav-exit { color: #e0857e; }
+.nav-exit:hover { background: rgba(184,77,71,.14); color: #ffb4ae; }
 .sidebar-footer .save-file-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
 .save-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(15,28,34,.55); backdrop-filter: blur(2px); display: grid; place-items: center; }
 .save-overlay-card { display: flex; align-items: center; gap: 12px; background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 11px; padding: 16px 22px; font-size: 12px; font-weight: 650; box-shadow: 0 18px 50px rgba(23,37,44,.3); }

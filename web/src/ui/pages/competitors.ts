@@ -14,6 +14,5 @@ export function renderCompetitors(ctx: ViewContext): string {
       const strategy = bot.strategy === 'aggressive' ? 'Агрессивная' : bot.strategy === 'moderate' ? 'Умеренная' : 'Консервативная'
       return `<article class="card competitor-card"><div class="rank">${index + 1}</div><div class="competitor-identity"><div class="company-logo">${bot.name.slice(0, 1)}</div><div><h2>${bot.name}</h2><div class="skill-list">${badge(level, level === 'Профи' ? 'success' : 'neutral')}${badge(strategy, 'info')}</div></div></div><div class="competitor-job"><span>Текущий заказ</span><strong>${bot.project ? buildingById(bot.project.job.building).name : 'Нет активного заказа'}</strong><small>${stateText} · бригада ${bot.crew.length} чел.</small></div><div class="competitor-progress">${progress(bot.project?.progress ?? 0, 'Прогресс')}</div><div class="competitor-capital"><span>Капитал</span><strong>${money(bot.money)}</strong><small>Прибыль за сезон: ${money(bot.totalProfit)}</small></div></article>`
     }).join('')}</section>
-    <div class="exit-save-row"><button class="btn btn-danger btn-small" data-action="save-exit">${icon('close')} Выйти и сохранить</button></div>
     <div class="footnote">Рейтинг строится по накопленной прибыли. Капитал включает доступные деньги компании.</div>`
 }

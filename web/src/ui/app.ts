@@ -290,11 +290,12 @@ export class App {
     const company = companyStatus(state)
     const work = state.hour >= BALANCE.workDayStart && state.hour < workDayEnd(state)
     const saveName = this.activeSave ? this.activeSave.replace(/\.json$/, '') : ''
+    const navMarkup = visibleRoutes.map((item) => `<button class="nav-item ${item.id === this.route ? 'active' : ''}" data-route="${item.id}" ${item.id === this.route ? 'aria-current="page"' : ''}>${icon(item.icon)}<span>${item.label}</span>${item.id === 'construction' && state.projects.length ? `<em>${state.projects.length}</em>` : ''}${item.id === 'jobs' && state.jobs.length ? `<small>${state.jobs.length}</small>` : ''}</button>${item.id === 'competitors' ? `<button class="nav-item nav-exit" data-action="save-exit">${icon('close')}<span>Выйти и сохранить</span></button>` : ''}`).join('')
     const markup = `<div class="app-shell ${this.navOpen ? 'nav-open' : ''}">
       <aside class="sidebar" aria-label="Основная навигация">
         <div class="brand"><span class="brand-mark">${icon('logo')}</span><div><strong>Bulder</strong><span>Строим бизнес</span></div><button class="icon-btn sidebar-close" data-action="close-nav" aria-label="Закрыть меню">${icon('close')}</button></div>
         <button class="company-chip" data-route="company">${companyAvatarSvg(state.companyAvatar, 'company-avatar-small')}<div><strong>${esc(state.companyName)}</strong><span>${company.name}</span></div><span class="status-dot"></span></button>
-        <nav class="main-nav">${visibleRoutes.map((item) => `<button class="nav-item ${item.id === this.route ? 'active' : ''}" data-route="${item.id}" ${item.id === this.route ? 'aria-current="page"' : ''}>${icon(item.icon)}<span>${item.label}</span>${item.id === 'construction' && state.projects.length ? `<em>${state.projects.length}</em>` : ''}${item.id === 'jobs' && state.jobs.length ? `<small>${state.jobs.length}</small>` : ''}</button>`).join('')}</nav>
+        <nav class="main-nav">${navMarkup}</nav>
         <div class="sidebar-season"><div class="eyebrow">Текущий сезон</div><div><strong>День ${state.day}</strong><span>/ ${BALANCE.seasonDays}</span></div><div class="season-track"><span style="width:${Math.min(100, state.day / BALANCE.seasonDays * 100)}%"></span></div><p>Капитал ${compactMoney(netWorth(state))}</p></div>
         <div class="sidebar-footer" title="${esc(this.activeSave ?? '')}"><span class="status-dot"></span><span class="save-file-label">${saveName ? `Сохранить: ${esc(saveName)}` : 'Новый сейв не создан'}</span></div>
       </aside>
