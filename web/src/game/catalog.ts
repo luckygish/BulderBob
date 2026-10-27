@@ -64,6 +64,25 @@ export const BUILDINGS: BuildingDef[] = [
       finish({ insulation: 80, lumber: 70 }, 90),
     ],
   },
+  {
+    id: 'apartments', name: 'Особый проект: Апартаменты', short: 'АП', budgetMin: 5_200_000, budgetMax: 7_500_000, minReputation: 65, special: true, requiredCrews: 2, reputationReward: 9,
+    stages: [
+      foundation(140, 55, 70),
+      walls('Монолитный каркас', { concrete: 120, rebar: 180 }, 130, ['crane']),
+      walls('Перекрытия', { concrete: 100, rebar: 120 }, 115, ['crane']),
+      roof(220, 60, 80, 65, ['crane']),
+      finish({ insulation: 120, lumber: 110 }, 95),
+    ],
+  },
+  {
+    id: 'resort_house', name: 'Особый проект: Дом отдыха', short: 'ДО', budgetMin: 3_800_000, budgetMax: 5_200_000, minReputation: 60, special: true, requiredCrews: 1, reputationReward: 7,
+    stages: [
+      foundation(100, 40, 55),
+      walls('Каркас корпуса', { lumber: 450, insulation: 50 }, 85, ['manipulator']),
+      roof(160, 50, 80, 50, ['manipulator']),
+      finish({ insulation: 120, lumber: 80 }, 70),
+    ],
+  },
 ]
 
 export const SUPPLIERS: Record<SupplierId, { name: string; short: string; description: string; feeRate: number; deliveryDays: number; initialPrice: number; initialStock: number }> = {
@@ -108,13 +127,17 @@ export const PROVISIONS: ProvisionDef[] = [
 
 export const TECHNOLOGIES: TechDef[] = [
   { id: 'planning_1', name: 'Планирование I', branch: 'Управление', cost: 300_000, days: 2, requires: '', requiresMoney: 0, description: 'До 2 активных объектов.' },
+  { id: 'seasonal_planning', name: 'Сезонное планирование', branch: 'Управление', cost: 450_000, days: 3, requires: 'planning_1', requiresMoney: 0, description: 'Сезонные дебаффы снижены на 10%.' },
   { id: 'planning_2', name: 'Планирование II', branch: 'Управление', cost: 1_500_000, days: 4, requires: 'planning_1', requiresMoney: 0, description: 'До 3 активных объектов.' },
   { id: 'planning_3', name: 'Планирование III', branch: 'Управление', cost: 2_500_000, days: 7, requires: 'planning_2', requiresMoney: 5_000_000, description: 'До 4 активных объектов.' },
   { id: 'worker_training', name: 'Обучение рабочих', branch: 'Персонал', cost: 200_000, days: 2, requires: '', requiresMoney: 0, description: '+0.2 эффективности каждому работнику.' },
+  { id: 'night_coordinator', name: 'Ночной координатор', branch: 'Персонал', cost: 400_000, days: 3, requires: 'worker_training', requiresMoney: 0, description: 'Ночной тариф снижен на 10%.' },
   { id: 'prof_standards', name: 'Профстандарты', branch: 'Персонал', cost: 800_000, days: 4, requires: 'worker_training', requiresMoney: 0, description: '+0.4 эффективности и вторая бригада.' },
   { id: 'automation', name: 'Автоматизация', branch: 'Персонал', cost: 1_200_000, days: 5, requires: 'prof_standards', requiresMoney: 3_000_000, description: 'Ночные смены всем бригадам с оплатой ×1.5.' },
-  { id: 'bank_account', name: 'Банковский счёт', branch: 'Финансы', cost: 150_000, days: 1, requires: '', requiresMoney: 0, description: 'Открывает кредиты и финансовые инструменты.' },
+  { id: 'bank_account', name: 'Банковский счёт', branch: 'Финансы', cost: 150_000, days: 1, requires: '', requiresMoney: 0, description: 'Открывает кредиты, отчётность и финансовые инструменты.' },
+  { id: 'overdraft', name: 'Овердрафт', branch: 'Финансы', cost: 350_000, days: 2, requires: 'bank_account', requiresMoney: 0, description: 'Долг до 300 000 ₽ не блокирует работу, но растёт на 1% в день.' },
   { id: 'good_leasing', name: 'Выгодный лизинг', branch: 'Финансы', cost: 500_000, days: 3, requires: 'bank_account', requiresMoney: 0, description: 'Скидка 5% на сумму лизинга.' },
+  { id: 'dealer_network', name: 'Дилерская сеть', branch: 'Финансы', cost: 500_000, days: 3, requires: 'good_leasing', requiresMoney: 0, description: 'Продажа собственной техники за 80% цены.' },
   { id: 'factoring', name: 'Факторинг', branch: 'Финансы', cost: 400_000, days: 4, requires: 'good_leasing', requiresMoney: 0, description: 'Аванс 30% при заказе, комиссия 2%.' },
 ]
 

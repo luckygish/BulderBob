@@ -6,3 +6,9 @@
 node_modules/
 dist/
 .kilo/node_modules/
+
+# Rust/Tauri build
+web/src-tauri/target/
+
+# локальные планы/инструменты
+.kilo/

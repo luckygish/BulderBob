@@ -1,6 +1,7 @@
 import { BALANCE } from './balance'
 import { EQUIPMENT, PROVISIONS, buildingById, materialById } from './catalog'
-import { crewEfficiency, frontPrice, inventoryQty, maxCrews, maxProjects, missingProvisions, netWorth, projectEquipmentReady, projectWorkers, requiredCrews } from './engine'
+import { crewEfficiency, frontPrice, inventoryQty, isDebtBlocked, maxCrews, maxProjects, missingProvisions, netWorth, projectEquipmentReady, projectWorkers, requiredCrews } from './engine'
+import { currentSeason, seasonFoundationManHours, seasonMaintenanceRate, seasonMaterialPriceRate, seasonWageRate } from './seasons'
 import type { GameState, Job, MaterialId, Project } from './types'
 
 export function estimateJob(state: GameState, job: Job) {
@@ -11,11 +12,12 @@ export function estimateJob(state: GameState, job: Job) {
     manHours += stage.manHours
     for (const [material, qty] of Object.entries(stage.materials) as [MaterialId, number][]) materials += frontPrice(state, material) * qty
   }
+  materials = Math.round(materials * (1 + seasonMaterialPriceRate(state)))
   const workers = state.crews[0].workers
   const crewCount = def.requiredCrews ?? 1
   const efficiency = workers.length > 0 ? crewEfficiency(workers) * crewCount : 2 * crewCount
   const hourly = workers.length > 0 ? workers.reduce((sum, worker) => sum + worker.rate, 0) * crewCount : 2_800 * crewCount
-  const labor = Math.round(manHours / efficiency * hourly)
+  const labor = Math.round(manHours / efficiency * hourly * (1 + seasonWageRate(state)))
   const profit = job.budget - materials - labor
   const days = Math.max(1, Math.ceil(manHours / efficiency / 10))
   return { materials, labor, manHours, profit, margin: profit / job.budget, days, startup: materials + PROVISIONS.reduce((sum, item) => sum + (state.provisions[item.id] > state.projects.length ? 0 : item.price), 0) + 16_000 }
@@ -43,14 +45,14 @@ export function forecastProject(state: GameState, project: Project): { days: num
   let remaining = 0
   def.stages.forEach((stage, index) => {
     const current = project.stages[index]
-    if (current.status !== 'completed') remaining += stage.manHours * (1 - current.progress)
+    if (current.status !== 'completed') remaining += seasonFoundationManHours(state, stage.manHours) * (1 - current.progress)
   })
   const days = Math.ceil(remaining / efficiency / 10)
   return { days, onTime: state.day + days <= project.job.deadline }
 }
 
 export function projectBlockReason(state: GameState, project: Project): string {
-  if (state.debt > 0) return `Долг ${state.debt.toLocaleString('ru-RU')} ₽`
+  if (isDebtBlocked(state)) return `Долг ${state.debt.toLocaleString('ru-RU')} ₽`
   const needCrews = requiredCrews(project)
   const assigned = project.crewIds.filter((crewId) => crewId >= 0 && crewId < maxCrews(state) && state.crews[crewId].workers.length > 0).length
   if (assigned < needCrews) return needCrews > 1 ? `Нужны две бригады (${assigned}/2)` : 'Нужна бригада'
@@ -65,11 +67,12 @@ export function projectBlockReason(state: GameState, project: Project): string {
 }
 
 export function capitalProgress(state: GameState): number {
-  return Math.min(1, Math.max(0, netWorth(state) / BALANCE.goalCapital))
+  return Math.min(1, Math.max(0, netWorth(state) / currentSeason(state).goal.capital))
 }
 
 export function seasonGoalMet(state: GameState): boolean {
-  return state.day <= BALANCE.seasonDays && netWorth(state) >= BALANCE.goalCapital && state.reputation >= BALANCE.goalReputation
+  const goal = currentSeason(state).goal
+  return state.day <= BALANCE.seasonDays && netWorth(state) >= goal.capital && state.reputation >= goal.reputation && state.seasonCompleted >= goal.completed
 }
 
 export function activeProjectLimitText(state: GameState): string {
@@ -91,6 +94,24 @@ export function equipmentMaintenance(state: GameState): number {
   return state.equipment.reduce((sum, asset) => {
     if (asset.status === 'rented') return sum
     const def = EQUIPMENT.find((item) => item.id === asset.id)!
-    return sum + Math.max(1, Math.round(def.price * BALANCE.maintenanceRate))
+    return sum + Math.max(1, Math.round(def.price * seasonMaintenanceRate(state)))
   }, 0)
+}
+
+export const COMPANY_STATUSES = [
+  { capital: 0, name: 'ИЖС · Частный подряд' },
+  { capital: 2_500_000, name: 'Местный застройщик' },
+  { capital: 5_000_000, name: 'Региональный подрядчик' },
+  { capital: 10_000_000, name: 'Городской девелопер' },
+  { capital: 18_000_000, name: 'Федеральный застройщик' },
+  { capital: 30_000_000, name: 'Корпорация недвижимости' },
+] as const
+
+export function companyStatus(state: GameState): { name: string; index: number; progress: number } {
+  const capital = netWorth(state)
+  const index = COMPANY_STATUSES.reduce((current, item, itemIndex) => capital >= item.capital ? itemIndex : current, 0)
+  const current = COMPANY_STATUSES[index]
+  const next = COMPANY_STATUSES[index + 1]
+  const progress = next ? (capital - current.capital) / (next.capital - current.capital) : 1
+  return { name: current.name, index, progress: Math.max(0, Math.min(1, progress)) }
 }

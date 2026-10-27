@@ -1,6 +1,6 @@
 import type { GameState, SupplierId } from '../game/types'
 
-export type Route = 'overview' | 'jobs' | 'construction' | 'market' | 'hr' | 'equipment' | 'technology' | 'bank' | 'competitors'
+export type Route = 'overview' | 'company' | 'jobs' | 'construction' | 'market' | 'hr' | 'equipment' | 'technology' | 'bank' | 'report' | 'competitors'
 
 export interface ViewContext {
   state: GameState
@@ -12,6 +12,7 @@ export interface ViewContext {
 
 export const ROUTES: { id: Route; label: string; icon: string }[] = [
   { id: 'overview', label: 'Обзор', icon: 'overview' },
+  { id: 'company', label: 'Компания', icon: 'company' },
   { id: 'jobs', label: 'Заказы', icon: 'jobs' },
   { id: 'construction', label: 'Строительство', icon: 'construction' },
   { id: 'market', label: 'Рынок', icon: 'market' },
@@ -19,5 +20,6 @@ export const ROUTES: { id: Route; label: string; icon: string }[] = [
   { id: 'equipment', label: 'Техника', icon: 'equipment' },
   { id: 'technology', label: 'Технологии', icon: 'tech' },
   { id: 'bank', label: 'Банк', icon: 'bank' },
+  { id: 'report', label: 'Финансовый отчёт', icon: 'report' },
   { id: 'competitors', label: 'Конкуренты', icon: 'competitors' },
 ]

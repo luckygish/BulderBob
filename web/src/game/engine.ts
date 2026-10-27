@@ -1,6 +1,7 @@
 import { BALANCE, LOAN_OPTIONS } from './balance'
 import { BUILDINGS, CLIENTS, MATERIALS, PROVISIONS, SKILLS, SUPPLIERS, WORKER_NAMES, WORKER_TYPES, buildingById, equipmentById, materialById, techById } from './catalog'
 import { nextId, pick, random, randomInt } from './rng'
+import { currentSeason, seasonFoundationManHours, seasonMaintenanceRate, seasonMaterialPriceRate, seasonNightWageMultiplier, seasonWageRate, workDayEnd } from './seasons'
 import type { ActionResult, Bot, EquipmentAsset, EquipmentId, GameState, InventoryBatch, Job, Loan, MaterialId, Project, Quote, SkillId, StageState, SupplierId, Worker, WorkerType } from './types'
 
 export function createNewGame(seed = Date.now()): GameState {
@@ -22,7 +23,9 @@ export function createNewGame(seed = Date.now()): GameState {
     },
     priceHistory, deliveries: [], equipment: [],
     provisions: Object.fromEntries(PROVISIONS.map((p) => [p.id, 0])) as GameState['provisions'],
-    research: {}, loan: null, bots: [], journal: [], totalRevenue: 0, goalAcknowledged: false,
+    research: {}, loan: null, bots: [], journal: [], totalRevenue: 0,
+    seasonIndex: 0, seasonCompleted: 0, seasonRevenue: 0, completedTutorial: [], equipmentSold: 0, usedSuppliers: [], seasonNotice: null,
+    companyName: 'Ваша компания', companyAvatar: 0, financeHistory: [],
   }
   for (const supplier of ['north', 'south'] as SupplierId[]) {
     for (const material of MATERIALS) {
@@ -39,6 +42,7 @@ export function createNewGame(seed = Date.now()): GameState {
     createBot(state, 'ДомМастер', 'moderate'),
     createBot(state, 'АтлантСтрой', 'conservative'),
   ]
+  recordFinanceSnapshot(state)
   addLog(state, 'Компания открыта. Первый заказ уже ждёт на доске.', 'success')
   return state
 }
@@ -97,6 +101,11 @@ export function generateWorkers(state: GameState, count: number): void {
 export function addLog(state: GameState, text: string, kind: GameState['journal'][number]['kind'] = 'info'): void {
   state.journal.push({ id: nextId(state, 'event'), day: state.day, hour: state.hour, kind, text })
   if (state.journal.length > BALANCE.journalLimit) state.journal.splice(0, state.journal.length - BALANCE.journalLimit)
+}
+
+export function recordFinanceSnapshot(state: GameState): void {
+  state.financeHistory.push({ day: state.day, capital: netWorth(state), cash: state.money, reputation: state.reputation, seasonCompleted: state.seasonCompleted })
+  if (state.financeHistory.length > 120) state.financeHistory.splice(0, state.financeHistory.length - 120)
 }
 
 export function isResearched(state: GameState, id: string): boolean {
@@ -178,8 +187,9 @@ export function quoteMaterial(state: GameState, material: MaterialId, quantity: 
     remaining -= take
     if (remaining <= 0) break
   }
-  const fee = Math.round(cost * SUPPLIERS[supplier].feeRate)
-  return { qty, cost, fee, total: cost + fee, arriveDay: state.day + SUPPLIERS[supplier].deliveryDays, available }
+  const seasonalCost = Math.round(cost * (1 + seasonMaterialPriceRate(state)))
+  const fee = Math.round(seasonalCost * SUPPLIERS[supplier].feeRate)
+  return { qty, cost: seasonalCost, fee, total: seasonalCost + fee, arriveDay: state.day + SUPPLIERS[supplier].deliveryDays, available }
 }
 
 function deductLots(state: GameState, material: MaterialId, supplier: SupplierId, quantity: number): void {
@@ -208,31 +218,42 @@ function addProjectInventory(project: Project, material: MaterialId, qty: number
   addBatches(project.reserved[material]!, qty, unitCost)
 }
 
+export function overdraftLimit(state: GameState): number {
+  return state.research.overdraft?.status === 'done' ? 300_000 : 0
+}
+
+export function isDebtBlocked(state: GameState): boolean {
+  return state.debt > overdraftLimit(state)
+}
+
 export function spend(state: GameState, amount: number): boolean {
-  if (amount < 0 || state.money < amount || state.debt > 0) return false
+  if (amount < 0 || isDebtBlocked(state)) return false
+  if (state.money - amount < -overdraftLimit(state)) return false
   state.money -= amount
   return true
 }
 
 export function chargeObligation(state: GameState, amount: number, label: string): void {
   const rounded = Math.max(0, Math.round(amount))
-  const paid = Math.min(state.money, rounded)
+  const paid = Math.max(0, Math.min(state.money, rounded))
   state.money -= paid
   const unpaid = rounded - paid
   if (unpaid > 0) {
     state.debt += unpaid
-    addLog(state, `${label}: не хватает ${unpaid.toLocaleString('ru-RU')} ₽. Работа остановлена до погашения долга.`, 'warning')
+    if (isDebtBlocked(state)) addLog(state, `${label}: не хватает ${unpaid.toLocaleString('ru-RU')} ₽. Работа остановлена до погашения долга.`, 'warning')
+    else addLog(state, `${label}: ${unpaid.toLocaleString('ru-RU')} ₽ покрыто овердрафтом.`, 'warning')
   }
 }
 
 export function purchaseMaterial(state: GameState, material: MaterialId, quantity: number, supplier: SupplierId, projectId?: string, feeMultiplier = 1): ActionResult {
-  if (state.debt > 0) return { ok: false, message: 'Сначала погасите текущие обязательства.' }
+  if (isDebtBlocked(state)) return { ok: false, message: 'Сначала погасите обязательства.' }
   const quote = quoteMaterial(state, material, quantity, supplier)
   const actualFee = Math.round(quote.fee * feeMultiplier)
   if (quantity <= 0 || quote.qty !== quantity) return { ok: false, message: 'На базе недостаточно материала.' }
   if (!spend(state, quote.cost + actualFee)) return { ok: false, message: 'Недостаточно денег для закупки и доставки.' }
   deductLots(state, material, supplier, quantity)
   state.demand[supplier][material] += quantity
+  if (!state.usedSuppliers.includes(supplier)) state.usedSuppliers.push(supplier)
   const unitCost = Math.round(quote.cost / quantity)
   const project = projectId ? state.projects.find((item) => item.id === projectId) : undefined
   if (quote.arriveDay <= state.day) {
@@ -346,7 +367,7 @@ export function projectEquipmentBonus(state: GameState, project: Project): numbe
 }
 
 export function startStage(state: GameState, project: Project): ActionResult {
-  if (state.debt > 0) return { ok: false, message: 'Стройка остановлена: погасите обязательства.' }
+  if (isDebtBlocked(state)) return { ok: false, message: 'Стройка остановлена: погасите обязательства.' }
   if (project.currentStage >= project.stages.length) return { ok: false, message: 'Все этапы завершены.' }
   if (project.stages[project.currentStage].status === 'in_progress') return { ok: false, message: 'Этап уже строится.' }
   if (!projectCrewsReady(state, project)) return { ok: false, message: requiredCrews(project) > 1 ? 'Назначьте две непустые бригады.' : 'Назначьте непустую бригаду.' }
@@ -365,18 +386,19 @@ export function startStage(state: GameState, project: Project): ActionResult {
 }
 
 function canWorkNow(state: GameState, project: Project): boolean {
-  if (state.hour >= BALANCE.workDayStart && state.hour < BALANCE.workDayEnd) return true
+  if (state.hour >= BALANCE.workDayStart && state.hour < workDayEnd(state)) return true
   if (isResearched(state, 'automation')) return true
   return projectWorkers(state, project).some((worker) => worker.skills.includes('owl'))
 }
 
 function processProjectHour(state: GameState, project: Project): void {
-  if (state.debt > 0 || project.currentStage >= project.stages.length || project.stages[project.currentStage].status !== 'in_progress') return
+  if (isDebtBlocked(state) || project.currentStage >= project.stages.length || project.stages[project.currentStage].status !== 'in_progress') return
   if (!canWorkNow(state, project) || !projectEquipmentReady(state, project)) return
   const workers = projectWorkers(state, project)
   if (workers.length === 0) return
-  const night = state.hour < BALANCE.workDayStart || state.hour >= BALANCE.workDayEnd
-  const wages = Math.round(crewHourly(workers) * (night ? BALANCE.nightWageMultiplier : 1))
+  const dayEnd = workDayEnd(state)
+  const night = state.hour < BALANCE.workDayStart || state.hour >= dayEnd
+  const wages = Math.round(crewHourly(workers) * (1 + seasonWageRate(state)) * (night ? seasonNightWageMultiplier(state) : 1))
   project.laborCost += wages
   project.totalHours += 1
   const asset = state.equipment.find((item) => item.assetId === project.equipmentAssetId)
@@ -385,7 +407,8 @@ function processProjectHour(state: GameState, project: Project): void {
     asset.hoursRemaining -= 1
   }
   const stageDef = buildingById(project.job.building).stages[project.currentStage]
-  project.stages[project.currentStage].progress += crewEfficiency(workers, workerBonus(state)) * (1 + projectEquipmentBonus(state, project)) / stageDef.manHours
+  const stageManHours = seasonFoundationManHours(state, stageDef.manHours)
+  project.stages[project.currentStage].progress += crewEfficiency(workers, workerBonus(state)) * (1 + projectEquipmentBonus(state, project)) / stageManHours
   if (asset?.status === 'rented' && asset.hoursRemaining <= 0) {
     state.equipment = state.equipment.filter((item) => item !== asset)
     project.equipmentAssetId = null
@@ -419,10 +442,12 @@ function completeProject(state: GameState, project: Project): void {
   const payment = Math.max(0, project.job.budget - project.penalty - project.advance)
   state.money += payment
   state.totalRevenue += project.job.budget - project.penalty
+  state.seasonRevenue += project.job.budget - project.penalty
+  state.seasonCompleted += 1
   project.profit = project.job.budget - project.materialCost - project.laborCost - project.logisticsCost - project.equipmentCost - project.factoringFee - project.penalty
   project.completedDay = state.day
   const def = buildingById(project.job.building)
-  state.reputation = Math.max(0, Math.min(100, state.reputation + (lateDays > 0 ? -5 - lateDays : def.reputationReward ?? 2)))
+  state.reputation = Math.max(0, Math.min(100, state.reputation + (lateDays > 0 ? -2 * lateDays : def.reputationReward ?? 2)))
   returnReservedMaterials(state, project)
   state.completed.unshift(project)
   state.projects = state.projects.filter((item) => item !== project)
@@ -448,8 +473,10 @@ function arriveDeliveries(state: GameState): void {
 }
 
 function settleDailyObligations(state: GameState): void {
-  if (state.debt > 0 && state.money > 0) {
-    const payment = Math.min(state.money, state.debt)
+  if (state.debt > 0) {
+    if (state.research.overdraft?.status === 'done') state.debt = Math.ceil(state.debt * 1.01)
+    const available = Math.max(0, state.money)
+    const payment = Math.min(available, state.debt)
     state.money -= payment
     state.debt -= payment
     if (state.debt === 0) addLog(state, 'Обязательства погашены, компания продолжает работу.', 'success')
@@ -484,7 +511,7 @@ function settleDailyObligations(state: GameState): void {
       }
     }
     if (asset.status !== 'rented') {
-      const maintenance = Math.max(1, Math.round(equipmentById(asset.id).price * BALANCE.maintenanceRate))
+      const maintenance = Math.max(1, Math.round(equipmentById(asset.id).price * seasonMaintenanceRate(state)))
       chargeObligation(state, maintenance, `Обслуживание · ${equipmentById(asset.id).name}`)
       if (project) project.equipmentCost += maintenance
     }
@@ -656,6 +683,51 @@ function dailyTick(state: GameState): void {
   for (let i = 0; i < additions && state.jobs.length < 5; i += 1) state.jobs.push(createJob(state))
   while (state.jobs.length < 3) state.jobs.push(createJob(state, state.reputation < 40 ? 'reconstruction' : undefined))
   if (state.candidates.length < BALANCE.minCandidates) generateWorkers(state, BALANCE.minCandidates - state.candidates.length)
+  recordFinanceSnapshot(state)
+}
+
+function transitionSeason(state: GameState): void {
+  const season = currentSeason(state)
+  const goal = season.goal
+  const success = netWorth(state) >= goal.capital && state.reputation >= goal.reputation && state.seasonCompleted >= goal.completed
+  const final = state.seasonIndex >= 9
+  state.reputation = Math.max(0, Math.min(100, state.reputation + (success ? 5 : -15)))
+  if (!final) state.seasonIndex += 1
+  for (const project of state.projects) {
+    project.job.deadline -= BALANCE.seasonDays
+    project.job.createdDay -= BALANCE.seasonDays
+    project.job.expiresDay -= BALANCE.seasonDays
+  }
+  for (const delivery of state.deliveries) delivery.arriveDay -= BALANCE.seasonDays
+  for (const job of state.jobs) {
+    job.deadline -= BALANCE.seasonDays
+    job.createdDay -= BALANCE.seasonDays
+    job.expiresDay -= BALANCE.seasonDays
+  }
+  for (const bot of state.bots) {
+    if (bot.project) {
+      bot.project.job.deadline -= BALANCE.seasonDays
+      bot.project.job.createdDay -= BALANCE.seasonDays
+      bot.project.job.expiresDay -= BALANCE.seasonDays
+    }
+  }
+  state.day = 1
+  state.hour = BALANCE.workDayStart
+  state.seasonCompleted = 0
+  state.seasonRevenue = 0
+  processSupply(state)
+  const additions = randomInt(state, 1, 2)
+  for (let i = 0; i < additions && state.jobs.length < 5; i += 1) state.jobs.push(createJob(state))
+  state.seasonNotice = {
+    success,
+    final: success && final,
+    title: success ? (final ? 'Финальный сезон выполнен' : 'Сезон выполнен') : 'Сезон провален',
+    text: success
+      ? `«${season.name}» завершён успешно. Награда +5 репутации. Начинается «${currentSeason(state).name}».`
+      : `Цели сезона «${season.name}» не достигнуты. Штраф −15 репутации. Начинается «${currentSeason(state).name}».`,
+  }
+  addLog(state, state.seasonNotice.text, success ? 'success' : 'warning')
+  state.paused = true
 }
 
 export function tickHour(state: GameState): void {
@@ -664,7 +736,8 @@ export function tickHour(state: GameState): void {
   if (state.hour >= 24) {
     state.hour = 0
     state.day += 1
-    dailyTick(state)
+    if (state.day > BALANCE.seasonDays) transitionSeason(state)
+    else dailyTick(state)
   }
   for (const project of [...state.projects]) processProjectHour(state, project)
 }
@@ -676,7 +749,7 @@ export function netWorth(state: GameState): number {
 
 export function repayDebt(state: GameState): ActionResult {
   if (state.debt <= 0) return { ok: false, message: 'Текущих долгов нет.' }
-  const payment = Math.min(state.money, state.debt)
+  const payment = Math.min(Math.max(0, state.money), state.debt)
   if (payment <= 0) return { ok: false, message: 'Недостаточно денег. Возможен кредит после исследования банковского счёта.' }
   state.money -= payment
   state.debt -= payment
@@ -697,7 +770,7 @@ export function takeLoan(state: GameState, amount: number): ActionResult {
 }
 
 export function acquireEquipment(state: GameState, id: EquipmentId, mode: EquipmentAsset['status'], hours = 0): ActionResult {
-  if (state.debt > 0) return { ok: false, message: 'Сначала погасите обязательства.' }
+  if (isDebtBlocked(state)) return { ok: false, message: 'Сначала погасите обязательства.' }
   const def = equipmentById(id)
   const assetId = nextId(state, 'asset')
   if (mode === 'owned') {
@@ -717,6 +790,24 @@ export function acquireEquipment(state: GameState, id: EquipmentId, mode: Equipm
   }
   addLog(state, `${def.name}: ${mode === 'owned' ? 'покупка' : mode === 'rented' ? `аренда ${hours} ч` : 'лизинг'} оформлена.`, 'money')
   return { ok: true, message: 'Техника добавлена в парк.' }
+}
+
+export function sellEquipment(state: GameState, assetId: string): ActionResult {
+  const asset = state.equipment.find((item) => item.assetId === assetId)
+  if (!asset) return { ok: false, message: 'Техника не найдена.' }
+  if (asset.status !== 'owned') return { ok: false, message: 'Можно продать только собственную технику.' }
+  const saleRate = state.research.dealer_network?.status === 'done' ? 0.8 : 0.7
+  const price = Math.round(equipmentById(asset.id).price * saleRate)
+  if (asset.projectId) {
+    const project = state.projects.find((item) => item.id === asset.projectId)
+    if (project?.equipmentAssetId === asset.assetId) project.equipmentAssetId = null
+    asset.projectId = null
+  }
+  state.equipment = state.equipment.filter((item) => item.assetId !== assetId)
+  state.money += price
+  state.equipmentSold += 1
+  addLog(state, `${equipmentById(asset.id).name}: продажа за ${price.toLocaleString('ru-RU')} ₽.`, 'money')
+  return { ok: true, message: `Техника продана за ${price.toLocaleString('ru-RU')} ₽.` }
 }
 
 export function assignEquipment(state: GameState, project: Project, assetId: string | null): ActionResult {

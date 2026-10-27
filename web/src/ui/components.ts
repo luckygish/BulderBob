@@ -32,3 +32,15 @@ export function pageHeading(eyebrow: string, title: string, description: string,
 export function journalItem(entry: JournalEntry): string {
   return `<article class="journal-item journal-${entry.kind}"><div class="journal-meta">День ${entry.day} · ${pad(entry.hour)}:00</div><p>${esc(entry.text)}</p></article>`
 }
+
+export function companyAvatarSvg(id: number, className = ''): string {
+  const shapes = [
+    '<path d="M4 11 12 5l8 6v9H4v-9Z"/><path d="M9 20v-6h6v6M2 11 12 4l10 7"/>',
+    '<path d="M4 21h16M7 21V6h5M7 6h13M12 6l8 4M17 10v8M14 18h6v3h-6z"/>',
+    '<path d="M5 16a7 7 0 0 1 14 0M3 16h18v4H3zM9 9V6h6v3"/>',
+    '<path d="M4 21V10h5v11M10 21V4h5v17M16 21v-8h5v8M2 21h20"/>',
+    '<path d="M4 4h16v16H4z"/><path d="M8 16V8h8M8 12h5"/>',
+  ]
+  const index = Math.max(0, Math.min(4, id))
+  return `<svg class="company-avatar avatar-${index} ${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="1" width="22" height="22" rx="6" fill="currentColor" opacity="0.12"/>${shapes[index]}</svg>`
+}

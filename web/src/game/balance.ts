@@ -1,5 +1,5 @@
 export const BALANCE = {
-  version: 2,
+  version: 4,
   startMoney: 2_000_000,
   startReputation: 50,
   workDayStart: 8,
@@ -28,8 +28,6 @@ export const BALANCE = {
   botDailyRental: 35_000,
   seasonDays: 90,
   specialJobChance: 0.2,
-  goalCapital: 10_000_000,
-  goalReputation: 70,
   hourMs: { 1: 2_000, 2: 1_000, 4: 250 },
   journalLimit: 200,
   saveKey: 'bulder-web-save-v1',

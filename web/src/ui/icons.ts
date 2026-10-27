@@ -28,6 +28,8 @@ const paths: Record<string, string> = {
   hardhat: '<path d="M4 15a8 8 0 0 1 16 0M2 15h20v4H2zM9 7V4h6v3"/>',
   crane: '<path d="M5 21h8M9 21V3h4M3 7h18M13 3l8 4M17 7v7M15 14h4v4h-4zM6 7l3-4 3 4"/>',
   document: '<path d="M6 2h8l4 4v16H6V2Z"/><path d="M14 2v5h5M9 12h6M9 16h6"/>',
+  company: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
+  report: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-8M20 16V6"/>',
 }
 
 export function icon(name: string, className = ''): string {

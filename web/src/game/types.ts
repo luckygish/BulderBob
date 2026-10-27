@@ -1,5 +1,5 @@
 export type MaterialId = 'concrete' | 'rebar' | 'lumber' | 'insulation' | 'metal_roof' | 'brick' | 'gas_block'
-export type BuildingId = 'reconstruction' | 'frame_house' | 'brick_house' | 'gas_block_house' | 'hangar' | 'tv_tower'
+export type BuildingId = 'reconstruction' | 'frame_house' | 'brick_house' | 'gas_block_house' | 'hangar' | 'tv_tower' | 'apartments' | 'resort_house'
 export type SupplierId = 'north' | 'south'
 export type WorkerType = 'handyman' | 'specialist' | 'foreman'
 export type SkillId = 'alcohol' | 'tudyaga' | 'owl' | 'thief' | 'thrifty' | 'mentor' | 'logistician' | 'technologist' | 'sluggish' | 'expensive'
@@ -60,6 +60,16 @@ export interface Research { status: 'researching' | 'done'; progress: number }
 export interface BotProject { job: Job; stages: StageState[]; currentStage: number; materialSpent: number; wagesPaid: number; rentalPaid: number; progress: number }
 export interface Bot { id: string; name: string; strategy: 'aggressive' | 'moderate' | 'conservative'; money: number; totalProfit: number; jobsDone: number; state: 'idle' | 'working' | 'cooldown'; cooldown: number; crew: Worker[]; project: BotProject | null; loan: Loan | null }
 export interface JournalEntry { id: string; day: number; hour: number; kind: 'info' | 'success' | 'warning' | 'money'; text: string }
+export interface SeasonGoal { capital: number; reputation: number; completed: number }
+export interface SeasonDef {
+  id: string
+  name: string
+  weather: 'summer' | 'winter'
+  goal: SeasonGoal
+  effects: { materialPriceRate?: number; foundationHoursRate?: number; extraWorkHour?: number; wageRate?: number; logisticsRate?: number; provisionRate?: number; maintenanceRate?: number; nightWageRate?: number }
+}
+export interface SeasonNotice { success: boolean; title: string; text: string; final?: boolean }
+export interface FinanceSnapshot { day: number; capital: number; cash: number; reputation: number; seasonCompleted: number }
 
 export interface GameState {
   version: number
@@ -89,7 +99,16 @@ export interface GameState {
   bots: Bot[]
   journal: JournalEntry[]
   totalRevenue: number
-  goalAcknowledged: boolean
+  seasonIndex: number
+  seasonCompleted: number
+  seasonRevenue: number
+  completedTutorial: string[]
+  equipmentSold: number
+  usedSuppliers: SupplierId[]
+  seasonNotice: SeasonNotice | null
+  companyName: string
+  companyAvatar: number
+  financeHistory: FinanceSnapshot[]
 }
 
 export interface Quote { qty: number; cost: number; fee: number; total: number; arriveDay: number; available: number }
