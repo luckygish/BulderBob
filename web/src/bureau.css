@@ -1268,6 +1268,15 @@ progress.progress::-moz-progress-bar {
   font-size: var(--text-xs);
 }
 
+.speed-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-height: 32px;
+  padding: 0;
+}
+
 .section-title p {
   font-size: 13px;
 }

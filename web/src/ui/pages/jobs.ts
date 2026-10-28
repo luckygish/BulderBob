@@ -1,3 +1,4 @@
+import { BALANCE } from '../../game/balance'
 import { buildingById } from '../../game/catalog'
 import { maxProjects } from '../../game/engine'
 import { activeProjectLimitText, estimateJob } from '../../game/selectors'
@@ -30,5 +31,5 @@ export function renderJobs(ctx: ViewContext): string {
         <button class="btn ${estimate.margin >= 0.12 ? 'btn-primary' : 'btn-secondary'} btn-block" data-action="take-job" data-id="${job.id}" ${full || locked ? 'disabled' : ''}>${locked ? `${icon('lock')} Требуется ${def.minReputation} репутации` : `Взять в работу ${icon('arrow')}`}</button>
       </article>`
     }).join('')}</section>
-    <div class="footnote">Новые подряды появляются ежедневно. Особые проекты — каждые 3 дня с вероятностью 10%, требуют репутацию от 75 и быстро уходят с доски.</div>`
+    <div class="footnote">Новые подряды появляются ежедневно. Особые проекты — каждые ${BALANCE.restockDays} дня с вероятностью ${Math.round(BALANCE.specialJobChance * 100)}%, требуют репутацию от 75 и быстро уходят с доски.</div>`
 }
