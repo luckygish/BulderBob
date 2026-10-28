@@ -761,6 +761,7 @@ export function takeLoan(state: GameState, amount: number): ActionResult {
   if (state.loan) return { ok: false, message: 'Одновременно доступен только один кредит.' }
   const option = LOAN_OPTIONS.find((item) => item.amount === amount)
   if (!option) return { ok: false, message: 'Неизвестное предложение.' }
+  if (option.minReputation && state.reputation < option.minReputation) return { ok: false, message: `Для кредита ${amount.toLocaleString('ru-RU')} ₽ нужна репутация ${option.minReputation}.` }
   const total = Math.round(amount * (1 + option.rate))
   const loan: Loan = { amount, rate: option.rate, total, daily: Math.round(total / BALANCE.loanDays), remaining: total }
   state.loan = loan

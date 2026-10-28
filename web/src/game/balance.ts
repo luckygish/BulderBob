@@ -33,7 +33,13 @@ export const BALANCE = {
   saveKey: 'bulder-web-save-v1',
 } as const
 
-export const LOAN_OPTIONS = [
+export interface LoanOption {
+  amount: number
+  rate: number
+  minReputation?: number
+}
+
+export const LOAN_OPTIONS: readonly LoanOption[] = [
   { amount: 500_000, rate: 0.06 },
-  { amount: 800_000, rate: 0.08 },
-] as const
+  { amount: 800_000, rate: 0.08, minReputation: 80 },
+]

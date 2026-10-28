@@ -10,6 +10,8 @@ export function takeJob(state: GameState, jobId: string): ActionResult {
   if (state.projects.length >= maxProjects(state)) return { ok: false, message: `Лимит активных объектов: ${maxProjects(state)}.` }
   const job = state.jobs.find((item) => item.id === jobId)
   if (!job) return { ok: false, message: 'Заказ уже недоступен.' }
+  const def = buildingById(job.building)
+  if (job.special && state.reputation < def.minReputation) return { ok: false, message: `Особые проекты доступны с репутации ${def.minReputation}.` }
   state.jobs = state.jobs.filter((item) => item.id !== jobId)
   const usedCrews = new Set(state.projects.flatMap((project) => project.crewIds))
   let freeCrew = -1

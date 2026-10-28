@@ -46,7 +46,7 @@ export const BUILDINGS: BuildingDef[] = [
     stages: [foundation(100, 40, 40), walls('Кладка стен', { gas_block: 800, concrete: 40 }, 60), roof(180, 40, 30, 40), finish({ insulation: 60, lumber: 50 }, 35)],
   },
   {
-    id: 'hangar', name: 'Особый проект: Ангар', short: 'АН', budgetMin: 4_200_000, budgetMax: 6_000_000, minReputation: 55, special: true, requiredCrews: 2, reputationReward: 8,
+    id: 'hangar', name: 'Особый проект: Ангар', short: 'АН', budgetMin: 4_200_000, budgetMax: 6_000_000, minReputation: 75, special: true, requiredCrews: 2, reputationReward: 8,
     stages: [
       foundation(180, 70, 65),
       walls('Монтаж каркаса', { rebar: 120, lumber: 300 }, 110, ['crane']),
@@ -55,7 +55,7 @@ export const BUILDINGS: BuildingDef[] = [
     ],
   },
   {
-    id: 'tv_tower', name: 'Особый проект: Телевышка', short: 'ТВ', budgetMin: 6_500_000, budgetMax: 9_500_000, minReputation: 65, special: true, requiredCrews: 2, reputationReward: 10,
+    id: 'tv_tower', name: 'Особый проект: Телевышка', short: 'ТВ', budgetMin: 6_500_000, budgetMax: 9_500_000, minReputation: 75, special: true, requiredCrews: 2, reputationReward: 10,
     stages: [
       foundation(250, 100, 90),
       walls('Башенный ствол', { concrete: 180, rebar: 160 }, 140, ['crane']),
@@ -65,7 +65,7 @@ export const BUILDINGS: BuildingDef[] = [
     ],
   },
   {
-    id: 'apartments', name: 'Особый проект: Апартаменты', short: 'АП', budgetMin: 5_200_000, budgetMax: 7_500_000, minReputation: 65, special: true, requiredCrews: 2, reputationReward: 9,
+    id: 'apartments', name: 'Особый проект: Апартаменты', short: 'АП', budgetMin: 5_200_000, budgetMax: 7_500_000, minReputation: 75, special: true, requiredCrews: 2, reputationReward: 9,
     stages: [
       foundation(140, 55, 70),
       walls('Монолитный каркас', { concrete: 120, rebar: 180 }, 130, ['crane']),
@@ -75,7 +75,7 @@ export const BUILDINGS: BuildingDef[] = [
     ],
   },
   {
-    id: 'resort_house', name: 'Особый проект: Дом отдыха', short: 'ДО', budgetMin: 3_800_000, budgetMax: 5_200_000, minReputation: 60, special: true, requiredCrews: 1, reputationReward: 7,
+    id: 'resort_house', name: 'Особый проект: Дом отдыха', short: 'ДО', budgetMin: 3_800_000, budgetMax: 5_200_000, minReputation: 75, special: true, requiredCrews: 1, reputationReward: 7,
     stages: [
       foundation(100, 40, 55),
       walls('Каркас корпуса', { lumber: 450, insulation: 50 }, 85, ['manipulator']),

@@ -64,6 +64,7 @@ export interface SeasonGoal { capital: number; reputation: number; completed: nu
 export interface SeasonDef {
   id: string
   name: string
+  title: string
   weather: 'summer' | 'winter'
   goal: SeasonGoal
   effects: { materialPriceRate?: number; foundationHoursRate?: number; extraWorkHour?: number; wageRate?: number; logisticsRate?: number; provisionRate?: number; maintenanceRate?: number; nightWageRate?: number }

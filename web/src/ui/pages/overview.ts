@@ -22,7 +22,7 @@ export function renderOverview(ctx: ViewContext): string {
   return `${pageHeading('Центр управления', `Добрый день, директор`, 'Главные показатели, сезонные цели и программа развития компании.', `<button class="btn btn-primary" data-route="jobs">${icon('plus')} Найти заказ</button>`)}
     <section class="season-card">
       <div class="season-icon">${icon('hardhat')}</div>
-      <div class="season-copy"><div class="eyebrow">Сезон ${Math.min(state.seasonIndex + 1, 10)} / 10 · ${season.name} · день ${state.day} из ${BALANCE.seasonDays}</div><h2>${seasonGoalMet(state) ? 'Цель сезона выполнена' : 'От двора — к городскому масштабу'}</h2><p>${seasonEffectText(state) || 'Особых сезонных условий нет'}</p></div>
+      <div class="season-copy"><div class="eyebrow">Сезон ${Math.min(state.seasonIndex + 1, 10)} / 10 · ${season.name} · день ${state.day} из ${BALANCE.seasonDays}</div><h2>${season.title}${seasonGoalMet(state) ? badge('Цель выполнена', 'success') : ''}</h2><p>${seasonEffectText(state) || 'Особых сезонных условий нет'}</p></div>
       <div class="season-progress"><div><span>Капитал</span><strong>${compactMoney(worth)} / ${compactMoney(goal.capital)}</strong></div>${progress(capitalProgress(state))}<div class="season-rep">${icon('star')} Репутация <strong>${state.reputation} / ${goal.reputation}</strong></div><div class="season-rep">${icon('check')} Объектов <strong>${state.seasonCompleted} / ${goal.completed}</strong></div>${progress(completedProgress)}</div>
     </section>
     <section class="kpi-grid">

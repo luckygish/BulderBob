@@ -30,6 +30,7 @@ const paths: Record<string, string> = {
   document: '<path d="M6 2h8l4 4v16H6V2Z"/><path d="M14 2v5h5M9 12h6M9 16h6"/>',
   company: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
   report: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-8M20 16V6"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
 }
 
 export function icon(name: string, className = ''): string {
