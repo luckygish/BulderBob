@@ -23,7 +23,7 @@ function seasonalPlanningMultiplier(state: GameState): number {
 }
 
 export function seasonMaterialPriceRate(state: GameState): number {
-  return (currentSeason(state).effects.materialPriceRate ?? 0) * seasonalPlanningMultiplier(state)
+  return ((currentSeason(state).effects.materialPriceRate ?? 0) + (state.seasonPriceBonus ?? 0)) * seasonalPlanningMultiplier(state)
 }
 
 export function seasonFoundationHoursRate(state: GameState): number {

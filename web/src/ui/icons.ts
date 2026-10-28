@@ -31,6 +31,7 @@ const paths: Record<string, string> = {
   company: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
   report: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-8M20 16V6"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  phone: '<path d="M4 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 2 6a2 2 0 0 1 2-2Z"/>',
 }
 
 export function icon(name: string, className = ''): string {

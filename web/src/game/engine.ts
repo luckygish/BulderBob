@@ -1,5 +1,6 @@
 import { BALANCE, LOAN_OPTIONS } from './balance'
 import { BUILDINGS, CLIENTS, MATERIALS, PROVISIONS, SKILLS, SUPPLIERS, WORKER_NAMES, WORKER_TYPES, buildingById, equipmentById, materialById, techById } from './catalog'
+import { EVENTS } from './events'
 import { nextId, pick, random, randomInt } from './rng'
 import { currentSeason, seasonFoundationManHours, seasonMaintenanceRate, seasonMaterialPriceRate, seasonNightWageMultiplier, seasonWageRate, workDayEnd } from './seasons'
 import type { ActionResult, Bot, EquipmentAsset, EquipmentId, GameState, InventoryBatch, Job, Loan, MaterialId, Project, Quote, SkillId, StageState, SupplierId, Worker, WorkerType } from './types'
@@ -25,7 +26,7 @@ export function createNewGame(seed = Date.now()): GameState {
     provisions: Object.fromEntries(PROVISIONS.map((p) => [p.id, 0])) as GameState['provisions'],
     research: {}, loan: null, bots: [], journal: [], totalRevenue: 0,
     seasonIndex: 0, seasonCompleted: 0, seasonRevenue: 0, completedTutorial: [], equipmentSold: 0, usedSuppliers: [], seasonNotice: null,
-    companyName: 'Ваша компания', companyAvatar: 0, financeHistory: [],
+    companyName: 'Ваша компания', companyAvatar: 0, financeHistory: [], event: null, eventsFired: [], seasonPriceBonus: 0,
   }
   for (const supplier of ['north', 'south'] as SupplierId[]) {
     for (const material of MATERIALS) {
@@ -683,6 +684,13 @@ function dailyTick(state: GameState): void {
   for (let i = 0; i < additions && state.jobs.length < 5; i += 1) state.jobs.push(createJob(state))
   while (state.jobs.length < 3) state.jobs.push(createJob(state, state.reputation < 40 ? 'reconstruction' : undefined))
   if (state.candidates.length < BALANCE.minCandidates) generateWorkers(state, BALANCE.minCandidates - state.candidates.length)
+  const eventDef = EVENTS.find((e) => e.season === state.seasonIndex && e.day === state.day && !(state.eventsFired ?? []).includes(e.id))
+  if (eventDef) {
+    state.event = eventDef.id
+    state.eventsFired.push(eventDef.id)
+    state.paused = true
+    addLog(state, `Необычное событие: «${eventDef.title}».`, 'warning')
+  }
   recordFinanceSnapshot(state)
 }
 
@@ -715,6 +723,7 @@ function transitionSeason(state: GameState): void {
   state.hour = BALANCE.workDayStart
   state.seasonCompleted = 0
   state.seasonRevenue = 0
+  state.seasonPriceBonus = 0
   processSupply(state)
   const additions = randomInt(state, 1, 2)
   for (let i = 0; i < additions && state.jobs.length < 5; i += 1) state.jobs.push(createJob(state))
@@ -820,4 +829,25 @@ export function assignEquipment(state: GameState, project: Project, assetId: str
   if (!asset) return { ok: true, message: 'Техника снята с объекта.' }
   asset.projectId = project.id
   return { ok: true, message: `${equipmentById(asset.id).name} назначена на объект.` }
+}
+
+export function resolveEvent(state: GameState, eventId: string, optionIndex: number): ActionResult {
+  const def = EVENTS.find((event) => event.id === eventId)
+  if (!def) return { ok: false, message: 'Событие не найдено.' }
+  const option = def.options[optionIndex]
+  if (!option) return { ok: false, message: 'Вариант не найден.' }
+  if (option.requiresReputation && state.reputation < option.requiresReputation) return { ok: false, message: `Нужна репутация ${option.requiresReputation}.` }
+  const cost = option.effect.cash ?? 0
+  if (cost < 0 && !spend(state, -cost)) return { ok: false, message: 'Недостаточно средств.' }
+  if (cost > 0) state.money += cost
+  if (option.effect.reputation) state.reputation = Math.max(0, Math.min(100, state.reputation + option.effect.reputation))
+  if (option.effect.delayDays) {
+    for (const project of state.projects) project.job.deadline += option.effect.delayDays
+  }
+  if (option.effect.seasonPriceBonus) state.seasonPriceBonus = Math.max(0, state.seasonPriceBonus + option.effect.seasonPriceBonus)
+  state.event = null
+  state.paused = false
+  const kind: GameState['journal'][number]['kind'] = cost < 0 ? 'money' : option.effect.reputation && option.effect.reputation < 0 ? 'warning' : option.effect.reputation ? 'success' : option.effect.delayDays ? 'warning' : 'info'
+  addLog(state, `${def.title}: ${option.outcome}`, kind)
+  return { ok: true, message: option.outcome }
 }

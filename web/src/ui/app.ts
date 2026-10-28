@@ -1,7 +1,8 @@
 import { assignCrew, buyMissingForProject, buyProvision, fireWorker, hireWorker, setSpeed, startCurrentStage, startFullProject, startResearch, takeJob, togglePause, allocateProjectStage } from '../game/actions'
 import { BALANCE } from '../game/balance'
 import { buildingById, equipmentById } from '../game/catalog'
-import { acquireEquipment, assignEquipment, createNewGame, isDebtBlocked, isResearched, netWorth, purchaseMaterial, quoteMaterial, repayDebt, sellEquipment, takeLoan, tickHour } from '../game/engine'
+import { acquireEquipment, assignEquipment, createNewGame, isDebtBlocked, isResearched, netWorth, overdraftLimit, purchaseMaterial, quoteMaterial, repayDebt, resolveEvent, sellEquipment, takeLoan, tickHour } from '../game/engine'
+import { eventById } from '../game/events'
 import { applyTutorialProgress } from '../game/progression'
 import { createSaveFile, isDesktop, listSaves, loadGame, onAppClose, quitApp, saveDir, saveGame } from '../game/persistence'
 import type { SaveMeta } from '../game/persistence'
@@ -82,6 +83,7 @@ export class App {
         this.save()
         if (!this.isEditing()) this.render()
         if (this.state.seasonNotice) this.showSeasonNotice()
+        if (this.state.event) this.showEvent()
       }
       this.schedule()
     }, this.state.paused ? 500 : BALANCE.hourMs[this.state.speed])
@@ -221,6 +223,7 @@ export class App {
     this.render()
     this.schedule()
     if (loaded.seasonNotice) this.showSeasonNotice()
+    if (loaded.event) this.showEvent()
     this.notify('Сохранение загружено.', 'success')
   }
 
@@ -372,7 +375,18 @@ export class App {
       case 'speed': setSpeed(this.state!, Number(id) as Speed); this.commit(); break
       case 'new-game': this.confirmNewGame(); break
       case 'confirm-new-game': this.closeModal(); void this.startNewGame(); break
-      case 'close-modal': this.closeModal(); break
+      case 'close-modal':
+        if (this.state?.event || this.state?.seasonNotice) {
+          this.notify('Выберите вариант.', 'error')
+          break
+        }
+        this.closeModal(); break
+      case 'event-option': {
+        const [eventId, optionIndex] = id.split(':')
+        this.closeModal()
+        this.commit(resolveEvent(this.state!, eventId, Number(optionIndex)))
+        break
+      }
       case 'save-exit': void this.saveAndQuit(); break
       case 'take-job': this.finish(takeJob(this.state!, id)); if (this.state!.projects.length) { this.projectId = this.state!.projects.at(-1)!.id; this.route = 'construction'; this.render() } break
       case 'open-project': this.projectId = id; this.route = 'construction'; this.render(); break
@@ -551,6 +565,28 @@ export class App {
     const saleRate = this.state!.research.dealer_network?.status === 'done' ? 0.8 : 0.7
     const price = Math.round(item.price * saleRate)
     this.openModal(`<div class="modal-icon warning">${icon('equipment')}</div><div class="eyebrow">Продажа техники</div><h2>${item.name}</h2><p>Собственную технику можно продать за ${Math.round(saleRate * 100)}% исходной цены. Техника будет снята с объекта, если назначена.</p><dl class="cost-list"><div><dt>Исходная цена</dt><dd>${money(item.price)}</dd></div><div><dt>Цена продажи</dt><dd class="positive">${money(price)}</dd></div><div><dt>Потеря капитала</dt><dd class="negative">−${money(item.price - price)}</dd></div></dl><div class="button-row modal-actions"><button class="btn btn-secondary" data-action="close-modal">Отмена</button><button class="btn btn-danger" data-action="confirm-sell-equipment" data-id="${asset.assetId}">Продать</button></div>`)
+  }
+
+  private showEvent(): void {
+    const state = this.state
+    const id = state?.event
+    if (!state || !id) return
+    const def = eventById(id)
+    state.paused = true
+    this.render()
+    const options = def.options.map((option, index) => {
+      const repLocked = option.requiresReputation !== undefined && state.reputation < option.requiresReputation
+      const cost = option.effect.cash ?? 0
+      const poor = cost < 0 && (isDebtBlocked(state) || state.money - (-cost) < -overdraftLimit(state))
+      const disabled = repLocked || poor
+      const hint = repLocked ? `Нужна репутация ${option.requiresReputation}` : poor ? 'Недостаточно средств' : option.hint ?? ''
+      return `<div class="event-option"><button class="btn btn-primary btn-block" data-action="event-option" data-id="${def.id}:${index}" ${disabled ? 'disabled' : ''}>${esc(option.label)}</button>${hint ? `<span class="event-effect">${esc(hint)}</span>` : ''}</div>`
+    }).join('')
+    this.openModal(`<div class="modal-icon warning">${icon('phone')}</div>
+      <div class="eyebrow">${esc(def.eyebrow)}</div>
+      <h2>${esc(def.title)}</h2>
+      <p>${esc(def.text)}</p>
+      <div class="event-options">${options}</div>`)
   }
 
   private showSeasonNotice(): void {

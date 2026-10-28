@@ -213,6 +213,9 @@ export async function loadGame(file: string): Promise<GameState | null> {
     if (state.version === 2) state = migrateV2(state)
     if (state.version === 3) state = migrateV3(state)
     if (state.version !== BALANCE.version || !Array.isArray(state.projects) || !Array.isArray(state.jobs)) return null
+    state.event ??= null
+    state.eventsFired ??= []
+    state.seasonPriceBonus ??= 0
     state.paused = true
     return state
   } catch {
@@ -285,5 +288,8 @@ function migrateV3(state: GameState): GameState {
   state.companyName ||= 'Ваша компания'
   state.companyAvatar ??= 0
   state.financeHistory ??= []
+  state.event ??= null
+  state.eventsFired ??= []
+  state.seasonPriceBonus ??= 0
   return state
 }

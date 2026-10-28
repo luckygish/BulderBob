@@ -505,6 +505,10 @@ p { color: var(--muted); line-height: 1.55; }
 .modal-total span { color: var(--muted); font-size: 10px; }
 .modal-total strong { color: var(--teal); font-size: 17px; }
 .goal-modal-stats { display: flex; gap: 8px; margin-bottom: 20px; }
+.event-options { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.event-option { display: flex; flex-direction: column; gap: 4px; }
+.event-option .btn { min-height: 42px; justify-content: space-between; white-space: normal; text-align: left; }
+.event-effect { color: var(--muted); font-size: 10px; padding-left: 2px; }
 .toast { position: fixed; z-index: 100; right: 22px; bottom: 22px; max-width: 390px; display: flex; align-items: center; gap: 10px; background: var(--ink); color: #fff; border-radius: 9px; box-shadow: 0 10px 30px rgba(23,37,44,.2); padding: 13px 16px; font-size: 11px; animation: toast-in .2s ease-out; }
 .toast .icon { width: 17px; color: #72c4ab; }
 .toast-error .icon { color: #f19a89; }

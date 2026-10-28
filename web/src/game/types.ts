@@ -70,6 +70,22 @@ export interface SeasonDef {
   effects: { materialPriceRate?: number; foundationHoursRate?: number; extraWorkHour?: number; wageRate?: number; logisticsRate?: number; provisionRate?: number; maintenanceRate?: number; nightWageRate?: number }
 }
 export interface SeasonNotice { success: boolean; title: string; text: string; final?: boolean }
+export interface EventOption {
+  label: string
+  hint?: string
+  requiresReputation?: number
+  effect: { cash?: number; reputation?: number; delayDays?: number; seasonPriceBonus?: number }
+  outcome: string
+}
+export interface EventDef {
+  id: string
+  season: number
+  day: number
+  eyebrow: string
+  title: string
+  text: string
+  options: EventOption[]
+}
 export interface FinanceSnapshot { day: number; capital: number; cash: number; reputation: number; seasonCompleted: number }
 
 export interface GameState {
@@ -110,6 +126,9 @@ export interface GameState {
   companyName: string
   companyAvatar: number
   financeHistory: FinanceSnapshot[]
+  event: string | null
+  eventsFired: string[]
+  seasonPriceBonus: number
 }
 
 export interface Quote { qty: number; cost: number; fee: number; total: number; arriveDay: number; available: number }
