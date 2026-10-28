@@ -1225,3 +1225,514 @@ progress.progress::-moz-progress-bar {
     aspect-ratio: auto;
   }
 }
+
+/* Типографическая доводка (итерация 2): подписи ≥12px, значения 13-14px, таблицы 15px. */
+
+/* Каркас и общее */
+
+.sidebar-footer {
+  font-size: var(--text-xs);
+}
+
+.sidebar-season p {
+  font-size: var(--text-xs);
+}
+
+.brand span:not(.brand-mark) {
+  font-size: var(--text-xs);
+}
+
+.nav-item em {
+  min-width: 22px;
+  padding: 2px 6px;
+  font-size: var(--text-xs);
+}
+
+.nav-item small {
+  font-size: var(--text-xs);
+}
+
+.company-chip div span {
+  font-size: var(--text-xs);
+}
+
+.top-metric span {
+  font-size: var(--text-xs);
+}
+
+.time-controls .btn span {
+  font-size: var(--text-xs);
+}
+
+.speed-control button {
+  font-size: var(--text-xs);
+}
+
+.section-title p {
+  font-size: 13px;
+}
+
+.text-btn {
+  font-size: 13px;
+}
+
+.badge {
+  font-size: var(--text-xs);
+}
+
+.page-heading p {
+  font-size: var(--text-sm);
+}
+
+/* Обзор */
+
+.season-copy p {
+  font-size: var(--text-sm);
+}
+
+.season-progress span {
+  font-size: var(--text-xs);
+}
+
+.season-rep {
+  font-size: var(--text-xs);
+}
+
+.kpi-card span,
+.kpi-card small {
+  font-size: var(--text-xs);
+}
+
+.kpi-card strong em {
+  font-size: var(--text-xs);
+}
+
+.next-step-card > p {
+  font-size: 13px;
+}
+
+.next-step-route > span {
+  font-size: var(--text-xs);
+}
+
+.mini-journal .journal-item p {
+  font-size: var(--text-xs);
+}
+
+.building-mark {
+  width: 38px;
+  height: 38px;
+  font-size: var(--text-xs);
+}
+
+.building-mark.large {
+  width: 50px;
+  height: 50px;
+}
+
+.project-mini > p {
+  font-size: 13px;
+}
+
+.project-mini-footer > span {
+  font-size: var(--text-xs);
+}
+
+.inline-empty p {
+  font-size: 13px;
+}
+
+.completed-banner span {
+  font-size: var(--text-xs);
+}
+
+.dashboard-footer {
+  font-size: var(--text-xs);
+}
+
+/* Рынок подрядов и стройка */
+
+.job-title p {
+  font-size: 13px;
+}
+
+.job-budget span {
+  font-size: var(--text-xs);
+}
+
+.job-stats span {
+  font-size: var(--text-xs);
+}
+
+.job-stats strong {
+  font-size: var(--text-sm);
+}
+
+.job-deadline strong {
+  font-size: 13px;
+}
+
+.job-deadline span {
+  font-size: var(--text-xs);
+}
+
+.project-identity p {
+  font-size: var(--text-sm);
+}
+
+.forecast strong {
+  font-size: 13px;
+}
+
+.forecast span {
+  font-size: var(--text-xs);
+}
+
+.stage-dot {
+  width: 30px;
+  height: 30px;
+  font-size: var(--text-xs);
+}
+
+.stage-step strong {
+  font-size: 13px;
+}
+
+.stage-step div span {
+  font-size: var(--text-xs);
+}
+
+.provision-check strong {
+  font-size: 13px;
+}
+
+.provision-check span {
+  font-size: var(--text-xs);
+}
+
+.material-code {
+  width: 34px;
+  height: 34px;
+}
+
+.material-check strong {
+  font-size: 13px;
+}
+
+.material-check div span {
+  font-size: var(--text-xs);
+}
+
+.material-need {
+  font-size: var(--text-xs);
+}
+
+.cost-list > div {
+  font-size: 13px;
+}
+
+.completed-card p {
+  font-size: var(--text-xs);
+}
+
+.completed-card > strong {
+  font-size: 13px;
+}
+
+.empty-state p {
+  font-size: 13px;
+}
+
+/* Рынок материалов */
+
+.supplier-tabs button strong {
+  font-size: 13px;
+}
+
+.supplier-tabs button span {
+  font-size: var(--text-xs);
+}
+
+.delivery-note strong {
+  font-size: 13px;
+}
+
+.delivery-note span {
+  font-size: var(--text-xs);
+}
+
+.quick-order p {
+  font-size: 13px;
+}
+
+.data-table td > strong {
+  font-size: var(--text-table);
+}
+
+.material-name strong {
+  font-size: var(--text-sm);
+}
+
+.material-name div span {
+  font-size: var(--text-xs);
+}
+
+.price-trend {
+  font-size: var(--text-xs);
+}
+
+.qty-input {
+  font-size: var(--text-sm);
+}
+
+.market-legend {
+  font-size: var(--text-xs);
+}
+
+.market-table td::before {
+  font-size: var(--text-xs);
+}
+
+/* Кадры, техника, технологии */
+
+.worker-avatar.small {
+  font-size: 13px;
+}
+
+.candidate-meta {
+  font-size: var(--text-xs);
+}
+
+.crew-stats span,
+.crew-stats small {
+  font-size: var(--text-xs);
+}
+
+.crew-worker strong {
+  font-size: 13px;
+}
+
+.crew-worker div > span {
+  font-size: var(--text-xs);
+}
+
+.crew-empty strong {
+  font-size: 13px;
+}
+
+.crew-empty span {
+  font-size: var(--text-xs);
+}
+
+.crew-slots span {
+  font-size: var(--text-xs);
+}
+
+.equipment-card > p {
+  font-size: 13px;
+}
+
+.equipment-price span {
+  font-size: var(--text-xs);
+}
+
+.equipment-actions .btn {
+  min-height: 38px;
+  font-size: var(--text-xs);
+}
+
+.equipment-fineprint {
+  font-size: var(--text-xs);
+}
+
+.asset-status {
+  font-size: 13px;
+}
+
+.provision-card h3 {
+  font-size: 13px;
+}
+
+.provision-card p {
+  font-size: var(--text-xs);
+}
+
+.provision-card strong {
+  font-size: 13px;
+}
+
+.tech-card > p {
+  font-size: 13px;
+}
+
+.tech-requirement {
+  min-height: 16px;
+  font-size: var(--text-xs);
+}
+
+.tech-footer strong {
+  font-size: 13px;
+}
+
+.tech-footer div span {
+  font-size: var(--text-xs);
+}
+
+.research-active p {
+  font-size: 13px;
+}
+
+.branch-title p {
+  font-size: var(--text-xs);
+}
+
+/* Банк и конкуренты */
+
+.bank-locked p {
+  font-size: 13px;
+}
+
+.loan-option > div > span {
+  font-size: var(--text-xs);
+}
+
+.loan-option p {
+  font-size: 13px;
+}
+
+.loan-option dl > div {
+  font-size: 13px;
+}
+
+.loan-total span {
+  font-size: var(--text-xs);
+}
+
+.perk strong {
+  font-size: 13px;
+}
+
+.perk span {
+  font-size: var(--text-xs);
+}
+
+.competitor-job > span,
+.competitor-capital > span,
+.competitor-job small,
+.competitor-capital small {
+  font-size: var(--text-xs);
+}
+
+.competitor-job strong,
+.competitor-capital strong {
+  font-size: 13px;
+}
+
+/* Профиль компании, отчёт, диалоги, стартовый экран */
+
+.company-profile-main p {
+  font-size: var(--text-sm);
+}
+
+.avatar-option span {
+  font-size: var(--text-xs);
+}
+
+.status-list strong {
+  font-size: 13px;
+}
+
+.status-list span {
+  font-size: var(--text-xs);
+}
+
+.app-dialog > p {
+  font-size: var(--text-sm);
+}
+
+.modal-total span {
+  font-size: var(--text-xs);
+}
+
+.chart-label {
+  font-size: var(--text-xs);
+}
+
+.chart-legend {
+  font-size: var(--text-xs);
+}
+
+.chart-empty strong {
+  font-size: 13px;
+}
+
+.chart-empty span {
+  font-size: var(--text-xs);
+}
+
+.bar-scale-label {
+  font-size: var(--text-xs);
+}
+
+.bar-value {
+  font-size: var(--text-xs);
+}
+
+.bar-item small {
+  font-size: var(--text-xs);
+}
+
+.cost-part span {
+  font-size: var(--text-xs);
+}
+
+.cost-part strong {
+  font-size: 13px;
+}
+
+.type-stats small {
+  font-size: var(--text-xs);
+}
+
+.start-busy {
+  font-size: 13px;
+}
+
+.start-save-dir {
+  font-size: var(--text-xs);
+}
+
+.save-list-head {
+  font-size: var(--text-xs);
+}
+
+.save-meta,
+.save-capital,
+.save-date {
+  font-size: var(--text-xs);
+}
+
+.save-load {
+  font-size: var(--text-xs);
+}
+
+/* Страница компании: карточки и блок «Текущий статус» */
+
+.company-layout > .card,
+.company-layout ~ section.card {
+  padding: 24px;
+}
+
+.company-profile-main {
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.status-list {
+  gap: 12px;
+}
+
+.status-list > div {
+  padding: 16px;
+  gap: 6px;
+}
