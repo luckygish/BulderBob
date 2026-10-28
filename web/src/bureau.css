@@ -1724,7 +1724,8 @@ progress.progress::-moz-progress-bar {
 }
 
 .company-profile-main {
-  gap: 20px;
+  padding: 8px;
+  gap: 24px;
   margin-bottom: 24px;
 }
 
@@ -1735,4 +1736,10 @@ progress.progress::-moz-progress-bar {
 .status-list > div {
   padding: 16px;
   gap: 6px;
+}
+
+/* Внутренние отступы блоков: элементы не прижаты к границам контейнера */
+
+.candidate-card {
+  padding: 14px 16px;
 }
