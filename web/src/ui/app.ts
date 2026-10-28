@@ -11,6 +11,7 @@ import { workDayEnd } from '../game/seasons'
 import type { ActionResult, EquipmentId, GameState, ProvisionId, Speed, SupplierId } from '../game/types'
 import { badge, compactMoney, companyAvatarSvg, esc, journalItem, money, pad } from './components'
 import { icon } from './icons'
+import { eventPortrait } from './eventArt'
 import { renderBank } from './pages/bank'
 import { renderCompetitors } from './pages/competitors'
 import { renderCompany } from './pages/company'
@@ -506,9 +507,10 @@ export class App {
     window.setTimeout(() => toast.remove(), 3_600)
   }
 
-  private openModal(content: string): void {
+  private openModal(content: string, className?: string): void {
     const dialog = document.querySelector<HTMLDialogElement>('#app-dialog')
     if (!dialog) return
+    dialog.classList.toggle('event-active', className === 'event-active')
     dialog.innerHTML = `<button class="icon-btn modal-close" data-action="close-modal" aria-label="Закрыть">${icon('close')}</button>${content}`
     dialog.showModal()
   }
@@ -582,11 +584,16 @@ export class App {
       const hint = repLocked ? `Нужна репутация ${option.requiresReputation}` : poor ? 'Недостаточно средств' : option.hint ?? ''
       return `<div class="event-option"><button class="btn btn-primary btn-block" data-action="event-option" data-id="${def.id}:${index}" ${disabled ? 'disabled' : ''}>${esc(option.label)}</button>${hint ? `<span class="event-effect">${esc(hint)}</span>` : ''}</div>`
     }).join('')
-    this.openModal(`<div class="modal-icon warning">${icon('phone')}</div>
-      <div class="eyebrow">${esc(def.eyebrow)}</div>
-      <h2>${esc(def.title)}</h2>
-      <p>${esc(def.text)}</p>
-      <div class="event-options">${options}</div>`)
+    this.openModal(`<div class="event-modal">
+      <img class="event-portrait" src="${eventPortrait(def.id)}" alt="${esc(def.eyebrow)}">
+      <div>
+        <div class="modal-icon warning">${icon('phone')}</div>
+        <div class="eyebrow">${esc(def.eyebrow)}</div>
+        <h2>${esc(def.title)}</h2>
+        <p>${esc(def.text)}</p>
+        <div class="event-options">${options}</div>
+      </div>
+    </div>`, 'event-active')
   }
 
   private showSeasonNotice(): void {
