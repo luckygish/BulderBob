@@ -241,9 +241,41 @@ function addInventory(state: GameState, material: MaterialId, qty: number, unitC
   addBatches(state.inventory[material], qty, unitCost)
 }
 
-function addProjectInventory(project: Project, material: MaterialId, qty: number, unitCost: number): void {
+export function addProjectInventory(project: Project, material: MaterialId, qty: number, unitCost: number): void {
   project.reserved[material] ??= []
   addBatches(project.reserved[material]!, qty, unitCost)
+}
+
+export function warehouseSpace(state: GameState, material: MaterialId): number {
+  return Math.max(0, BALANCE.warehouseCap - inventoryQty(state, material))
+}
+
+export function storeWarehouseCapped(state: GameState, material: MaterialId, qty: number, unitCost: number): { stored: number; sold: number } {
+  const stored = Math.min(qty, warehouseSpace(state, material))
+  const sold = qty - stored
+  if (stored > 0) addInventory(state, material, stored, unitCost)
+  if (sold > 0) {
+    const income = Math.round(sold * unitCost * BALANCE.warehouseSaleRate)
+    state.money += income
+    addLog(state, `Отгрузка на склад сверх лимита продана по ${Math.round(BALANCE.warehouseSaleRate * 100)}% себестоимости: ${materialById(material).name}, ${sold} ${materialById(material).unit} за ${income.toLocaleString('ru-RU')} ₽.`, 'warning')
+  }
+  return { stored, sold }
+}
+
+export function warehouseCost(state: GameState): number {
+  let total = 0
+  for (const batches of Object.values(state.inventory)) for (const batch of batches) total += batch.qty * batch.unitCost
+  return total
+}
+
+export function warehouseStorageRate(state: GameState): number {
+  const totalUnits = MATERIALS.reduce((sum, material) => sum + inventoryQty(state, material.id), 0)
+  if (totalUnits <= 0) return 0
+  return totalUnits <= BALANCE.storageFeeTier1 ? BALANCE.storageFeeRateMaxQty : BALANCE.storageFeeRateOver
+}
+
+export function warehouseStorageFee(state: GameState): number {
+  return Math.round(warehouseCost(state) * warehouseStorageRate(state))
 }
 
 export function overdraftLimit(state: GameState): number {
@@ -278,6 +310,8 @@ export function purchaseMaterial(state: GameState, material: MaterialId, quantit
   const quote = quoteMaterial(state, material, quantity, supplier)
   const actualFee = Math.round(quote.fee * feeMultiplier)
   if (quantity <= 0 || quote.qty !== quantity) return { ok: false, message: 'На базе недостаточно материала.' }
+  const project = projectId ? state.projects.find((item) => item.id === projectId) : undefined
+  if (!project && quantity > warehouseSpace(state, material)) return { ok: false, message: `Склад не вмещает ${quantity} ед. «${materialById(material).name}» (потолок ${BALANCE.warehouseCap}).` }
   if (!spend(state, quote.cost + actualFee)) return { ok: false, message: 'Недостаточно денег для закупки и доставки.' }
   const stockBefore = quote.available
   deductLots(state, material, supplier, quantity)
@@ -295,10 +329,9 @@ export function purchaseMaterial(state: GameState, material: MaterialId, quantit
   state.demand[supplier][material] += quantity
   if (!state.usedSuppliers.includes(supplier)) state.usedSuppliers.push(supplier)
   const unitCost = Math.round(quote.cost / quantity)
-  const project = projectId ? state.projects.find((item) => item.id === projectId) : undefined
   if (quote.arriveDay <= state.day) {
     if (project) addProjectInventory(project, material, quantity, unitCost)
-    else addInventory(state, material, quantity, unitCost)
+    else storeWarehouseCapped(state, material, quantity, unitCost)
   } else {
     state.deliveries.push({ id: nextId(state, 'delivery'), supplier, arriveDay: quote.arriveDay, items: [{ material, qty: quantity, unitCost }], fee: actualFee, projectId: project?.id })
   }
@@ -476,7 +509,7 @@ function processProjectHour(state: GameState, project: Project): void {
 
 function returnReservedMaterials(state: GameState, project: Project): void {
   for (const [material, batches] of Object.entries(project.reserved) as [MaterialId, InventoryBatch[]][]) {
-    for (const batch of batches) addInventory(state, material, batch.qty, batch.unitCost)
+    for (const batch of batches) storeWarehouseCapped(state, material, batch.qty, batch.unitCost)
   }
   project.reserved = {}
 }
@@ -516,7 +549,7 @@ function arriveDeliveries(state: GameState): void {
     const project = delivery.projectId ? state.projects.find((item) => item.id === delivery.projectId) : undefined
     for (const item of delivery.items) {
       if (project) addProjectInventory(project, item.material, item.qty, item.unitCost)
-      else addInventory(state, item.material, item.qty, item.unitCost)
+      else storeWarehouseCapped(state, item.material, item.qty, item.unitCost)
     }
     addLog(state, `Поставка с базы «${SUPPLIERS[delivery.supplier].name}» принята${project ? ' в резерв объекта' : ' на склад'}.`, 'success')
   }
@@ -567,6 +600,8 @@ function settleDailyObligations(state: GameState): void {
       if (project) project.equipmentCost += maintenance
     }
   }
+  const storageFee = warehouseStorageFee(state)
+  if (storageFee > 0) chargeObligation(state, storageFee, 'Обслуживание · Склад')
 }
 
 function processSupply(state: GameState): void {

@@ -2,11 +2,14 @@ import type { GameState, SupplierId } from '../game/types'
 
 export type Route = 'overview' | 'company' | 'jobs' | 'construction' | 'market' | 'hr' | 'equipment' | 'technology' | 'bank' | 'report' | 'competitors'
 
+export type MarketTab = SupplierId | 'warehouse'
+
 export interface ViewContext {
   state: GameState
   route: Route
   projectId: string | null
   supplier: SupplierId
+  marketTab: MarketTab
   crewId: number
 }
 

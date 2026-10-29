@@ -1,6 +1,6 @@
 import { BALANCE } from '../../game/balance'
 import { buildingById } from '../../game/catalog'
-import { isResearched, netWorth } from '../../game/engine'
+import { isResearched, netWorth, warehouseStorageFee } from '../../game/engine'
 import { capitalProgress, companyStatus, equipmentMaintenance, projectCosts, seasonGoalMet } from '../../game/selectors'
 import { currentSeason, seasonEffectText } from '../../game/seasons'
 import type { FinanceSnapshot, GameState, Project } from '../../game/types'
@@ -137,6 +137,6 @@ export function renderReport(ctx: ViewContext): string {
       <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Затраты</div><h2>Структура расходов</h2></div></div>${costStructure(state.completed)}<p class="field-hint">Всего прямых затрат: ${money(direct)}</p></section>
       <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Портфель</div><h2>Типы объектов</h2></div></div>${buildingStats(state.completed)}</section>
       <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Сезон</div><h2>${season.name}</h2></div>${badge(seasonGoalMet(state) ? 'цель выполнена' : `день ${state.day}/${BALANCE.seasonDays}`, seasonGoalMet(state) ? 'success' : 'info')}</div><p>${seasonEffectText(state) || 'Особых условий нет'}</p>${progress(capitalProgress(state), 'Капитал')}${progress(state.reputation / season.goal.reputation, 'Репутация')}${progress(state.seasonCompleted / season.goal.completed, 'Объекты')}</section>
-      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Компания</div><h2>${status.name}</h2></div></div>${progress(status.progress, 'До следующего статуса')}<dl class="cost-list"><div><dt>Лучший объект</dt><dd>${stats.best ? `${buildingById(stats.best.job.building).name} · ${money(stats.best.profit)}` : '—'}</dd></div><div><dt>Просроченных сдач</dt><dd>${stats.late}</dd></div><div><dt>Техника</dt><dd>${state.equipment.length} ед.</dd></div><div><dt>Обслуживание</dt><dd>${money(equipmentMaintenance(state))} / день</dd></div><div><dt>Сумма продаж техники</dt><dd>${state.equipmentSold} ед.</dd></div></dl></section>
+      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Компания</div><h2>${status.name}</h2></div></div>${progress(status.progress, 'До следующего статуса')}<dl class="cost-list"><div><dt>Лучший объект</dt><dd>${stats.best ? `${buildingById(stats.best.job.building).name} · ${money(stats.best.profit)}` : '—'}</dd></div><div><dt>Просроченных сдач</dt><dd>${stats.late}</dd></div><div><dt>Техника</dt><dd>${state.equipment.length} ед.</dd></div><div><dt>Обслуживание</dt><dd>${money(equipmentMaintenance(state) + warehouseStorageFee(state))} / день</dd></div><div><dt>Сумма продаж техники</dt><dd>${state.equipmentSold} ед.</dd></div></dl></section>
     </div>`
 }

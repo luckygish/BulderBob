@@ -1,4 +1,4 @@
-import { assignCrew, buyMissingForProject, buyProvision, fireWorker, hireWorker, setSpeed, startCurrentStage, startFullProject, startResearch, takeJob, togglePause, allocateProjectStage } from '../game/actions'
+import { assignCrew, buyMissingForProject, buyProvision, fireWorker, hireWorker, restockMaterialFromWarehouse, restockProjectFromWarehouse, setSpeed, startCurrentStage, startFullProject, startResearch, takeJob, togglePause, allocateProjectStage } from '../game/actions'
 import { BALANCE } from '../game/balance'
 import { buildingById, equipmentById } from '../game/catalog'
 import { acquireEquipment, assignEquipment, createNewGame, isDebtBlocked, isResearched, netWorth, overdraftLimit, purchaseMaterial, quoteMaterial, repayDebt, resolveEvent, sellEquipment, takeLoan, tickHour } from '../game/engine'
@@ -8,7 +8,7 @@ import { createSaveFile, isDesktop, listSaves, loadGame, onAppClose, quitApp, sa
 import type { SaveMeta } from '../game/persistence'
 import { companyStatus, projectCosts } from '../game/selectors'
 import { workDayEnd } from '../game/seasons'
-import type { ActionResult, EquipmentId, GameState, ProvisionId, Speed, SupplierId } from '../game/types'
+import type { ActionResult, EquipmentId, GameState, MaterialId, ProvisionId, Speed, SupplierId } from '../game/types'
 import { badge, compactMoney, companyAvatar, esc, journalItem, money, pad } from './components'
 import { icon } from './icons'
 import { eventPortrait } from './eventArt'
@@ -25,7 +25,7 @@ import { renderReport } from './pages/report'
 import { renderTechnology } from './pages/technology'
 import { patchDom } from './dom'
 import { ROUTES } from './types'
-import type { Route, ViewContext } from './types'
+import type { MarketTab, Route, ViewContext } from './types'
 
 export class App {
   private state: GameState | null = null
@@ -33,6 +33,7 @@ export class App {
   private route: Route = 'overview'
   private projectId: string | null = null
   private supplier: SupplierId = 'north'
+  private marketTab: MarketTab = 'north'
   private crewId = 0
   private journalOpen = false
   private navOpen = false
@@ -103,7 +104,7 @@ export class App {
   }
 
   private context(): ViewContext {
-    return { state: this.state!, route: this.route, projectId: this.projectId, supplier: this.supplier, crewId: this.crewId }
+    return { state: this.state!, route: this.route, projectId: this.projectId, supplier: this.supplier, marketTab: this.marketTab, crewId: this.crewId }
   }
 
   private page(): string {
@@ -306,7 +307,7 @@ export class App {
       <button class="nav-backdrop" data-action="close-nav" aria-label="Закрыть меню"></button>
       <div class="workspace">
         <header class="topbar"><div class="topbar-context"><button class="icon-btn mobile-menu" data-action="open-nav" aria-label="Открыть меню">${icon('menu')}</button><div><span>${route.label}</span><strong>${state.paused ? 'Игра на паузе' : work ? 'Рабочий день' : 'Ночное время'}</strong></div></div>
-          <div class="topbar-metrics"><div class="top-metric money-metric"><span>На счёте</span><strong>${compactMoney(state.money)}</strong></div><div class="top-metric"><span>${icon('clock')} День ${state.day}</span><strong>${pad(state.hour)}:00</strong></div><div class="top-metric reputation-metric"><span>Репутация</span><strong>${icon('star')} ${state.reputation}</strong></div></div>
+          <div class="topbar-metrics"><div class="top-metric money-metric"><span>На счёте</span><strong>${compactMoney(state.money)}</strong></div><div class="top-metric"><span>${icon('clock')} День ${state.day}</span><strong>${pad(state.hour)}:00</strong></div><div class="top-metric reputation-metric" title="Репутация влияет на заказы, технологии и достижения." tabindex="0"><span>Репутация</span><strong>${icon('star')} ${state.reputation}</strong><div class="rep-tooltip" role="tooltip">Репутация влияет на заказы, технологии и достижения. Получайте её за успехи и события.</div></div></div>
           <div class="time-controls"><button class="btn btn-small ${state.paused ? 'btn-primary' : 'btn-secondary'}" data-action="pause" aria-label="${state.paused ? 'Продолжить' : 'Пауза'}">${icon(state.paused ? 'play' : 'pause')}<span>${state.paused ? 'Продолжить' : 'Пауза'}</span></button><div class="speed-control" aria-label="Скорость игры">${([1, 2, 4] as Speed[]).map((speed) => `<button class="${state.speed === speed && !state.paused ? 'active' : ''}" data-action="speed" data-id="${speed}" aria-label="Скорость ×${speed}">×${speed}</button>`).join('')}</div></div>
           <div class="topbar-actions"><button class="icon-btn ${this.journalOpen ? 'active' : ''}" data-action="journal" aria-label="Журнал (J)">${icon('journal')}</button><button class="icon-btn" data-action="new-game" aria-label="Новая игра" title="Новая игра">${icon('plus')}</button></div>
         </header>
@@ -395,7 +396,22 @@ export class App {
       case 'hire': this.finish(hireWorker(this.state!, id, this.crewId)); break
       case 'fire': this.finish(fireWorker(this.state!, id, this.crewId)); break
       case 'crew': this.crewId = Number(id); this.render(); break
-      case 'supplier': this.supplier = id as SupplierId; this.render(); break
+      case 'supplier':
+        if (id === 'warehouse') this.marketTab = 'warehouse'
+        else { this.supplier = id as SupplierId; this.marketTab = id as SupplierId }
+        this.render()
+        break
+      case 'restock-from-warehouse': {
+        const projectId = this.projectId ?? this.state!.projects[0]?.id
+        if (projectId) this.finish(restockProjectFromWarehouse(this.state!, projectId))
+        break
+      }
+      case 'restock-material': {
+        const projectId = this.projectId ?? this.state!.projects[0]?.id
+        const input = document.querySelector<HTMLInputElement>(`[data-qty="${id}"]`)
+        if (projectId) this.finish(restockMaterialFromWarehouse(this.state!, projectId, id as MaterialId, Number(input?.value)))
+        break
+      }
       case 'buy-material': {
         const input = document.querySelector<HTMLInputElement>(`[data-qty="${id}"]`)
         this.finish(purchaseMaterial(this.state!, id as Parameters<typeof purchaseMaterial>[1], Number(input?.value), this.supplier))

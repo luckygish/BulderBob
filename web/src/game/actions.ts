@@ -1,6 +1,6 @@
 import { BALANCE } from './balance'
 import { MATERIALS, PROVISIONS, buildingById, materialById, techById } from './catalog'
-import { addLog, allocateStage, crewHourly, frontPrice, hasStageMaterials, inventoryQty, isDebtBlocked, isResearched, makeStages, maxCrews, maxProjects, netWorth, projectLogisticsRate, projectReservedQty, purchaseMaterial, quoteMaterial, requiredCrews, requiredMaterials, spend, startStage, stockQty } from './engine'
+import { addLog, addProjectInventory, allocateStage, crewHourly, frontPrice, hasStageMaterials, inventoryQty, isDebtBlocked, isResearched, makeStages, maxCrews, maxProjects, netWorth, projectLogisticsRate, projectReservedQty, purchaseMaterial, quoteMaterial, requiredCrews, requiredMaterials, spend, startStage, stockQty, takeFromInventory } from './engine'
 import { nextId } from './rng'
 import { seasonLogisticsRate, seasonProvisionRate } from './seasons'
 import type { ActionResult, GameState, MaterialId, Project, ProvisionId, Speed, SupplierId } from './types'
@@ -126,6 +126,39 @@ export function buyMissingForProject(state: GameState, projectId: string, suppli
   }
   project.logisticsCost += fees
   return { ok: true, message: `Закупка оформлена на ${total.toLocaleString('ru-RU')} ₽ и зарезервирована за объектом.` }
+}
+
+export function restockProjectFromWarehouse(state: GameState, projectId: string): ActionResult {
+  const project = state.projects.find((item) => item.id === projectId)
+  if (!project) return { ok: false, message: 'Проект не найден.' }
+  const missing = missingForProject(state, project)
+  const entries = Object.entries(missing) as [MaterialId, number][]
+  if (entries.length === 0) return { ok: false, message: 'Все материалы уже есть на складах компании или объекта.' }
+  const taken: string[] = []
+  for (const [material, need] of entries) {
+    const take = Math.min(need, inventoryQty(state, material))
+    if (take <= 0) continue
+    const { cost } = takeFromInventory(state, material, take)
+    addProjectInventory(project, material, take, Math.round(cost / take))
+    taken.push(`${materialById(material).name} ${take} ${materialById(material).unit}`)
+  }
+  if (taken.length === 0) return { ok: false, message: 'На складе нет недостающих материалов (закупите на базе).' }
+  addLog(state, `Пополнено со склада: ${taken.join(', ')}.`, 'money')
+  return { ok: true, message: `В резерв объекта перемещено со склада: ${taken.join(', ')}.` }
+}
+
+export function restockMaterialFromWarehouse(state: GameState, projectId: string, material: MaterialId, qty: number): ActionResult {
+  const project = state.projects.find((item) => item.id === projectId)
+  if (!project) return { ok: false, message: 'Проект не найден.' }
+  if (!Number.isInteger(qty) || qty <= 0) return { ok: false, message: 'Укажите целое количество больше нуля.' }
+  const need = missingForProject(state, project)[material] ?? 0
+  if (need <= 0) return { ok: false, message: 'Этот материал для объекта не требуется.' }
+  const take = Math.min(qty, need, inventoryQty(state, material))
+  if (take <= 0) return { ok: false, message: `На складе нет ${materialById(material).name.toLowerCase()}.` }
+  const { cost } = takeFromInventory(state, material, take)
+  addProjectInventory(project, material, take, Math.round(cost / take))
+  addLog(state, `Пополнено со склада: ${materialById(material).name}, ${take} ${materialById(material).unit}.`, 'money')
+  return { ok: true, message: `В резерв объекта перемещено: ${materialById(material).name}, ${take} ${materialById(material).unit}.` }
 }
 
 export function buyProvision(state: GameState, id: ProvisionId): ActionResult {

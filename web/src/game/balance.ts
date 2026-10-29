@@ -39,6 +39,11 @@ export const BALANCE = {
   hourMs: { 1: 2_000, 2: 1_000, 4: 250 },
   journalLimit: 200,
   saveKey: 'bulder-web-save-v1',
+  warehouseCap: 1_000,
+  warehouseSaleRate: 0.7,
+  storageFeeTier1: 500,
+  storageFeeRateMaxQty: 0.01,
+  storageFeeRateOver: 0.02,
 } as const
 
 export interface LoanOption {

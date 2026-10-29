@@ -2,7 +2,8 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { BALANCE } from '../src/game/balance'
 import { MATERIALS, SUPPLIERS, materialById } from '../src/game/catalog'
-import { createNewGame, frontPrice, purchaseMaterial, quoteMaterial, stockQty, tickHour } from '../src/game/engine'
+import { createNewGame, createJob, frontPrice, purchaseMaterial, quoteMaterial, stockQty, tickHour } from '../src/game/engine'
+import { takeJob } from '../src/game/actions'
 import { seasonMaterialPriceRate } from '../src/game/seasons'
 import type { GameState } from '../src/game/types'
 
@@ -65,7 +66,11 @@ describe('рынок: FIFO-покупка', () => {
     assert.equal(quote.available, 1_500)
     const raw = 1_000 * 4_000 + 200 * 5_000
     assert.equal(quote.cost, Math.round(raw * (1 + seasonMaterialPriceRate(state))))
-    const result = purchaseMaterial(state, 'concrete', 1_200, 'north')
+    const job = createJob(state, 'reconstruction')
+    state.jobs.push(job)
+    assert.equal(takeJob(state, job.id).ok, true)
+    const project = state.projects[0]!
+    const result = purchaseMaterial(state, 'concrete', 1_200, 'north', project.id)
     assert.equal(result.ok, true)
     const share = 1_200 / 1_500
     const bump = Math.max(0, share - 0.25)
@@ -134,7 +139,11 @@ describe('рынок: пересчёт поставок раз в 3 дня', () 
 
   it('объём рестока ограничен новым stockMax', () => {
     const state = freshState()
-    purchaseMaterial(state, 'concrete', materialById('concrete').stockMax, 'north')
+    const job = createJob(state, 'reconstruction')
+    state.jobs.push(job)
+    assert.equal(takeJob(state, job.id).ok, true)
+    const project = state.projects[0]!
+    purchaseMaterial(state, 'concrete', materialById('concrete').stockMax, 'north', project.id)
     assert.equal(stockQty(state, 'concrete', 'north'), 0)
     state.demand.north.concrete = 100_000
     advanceToRestock(state)

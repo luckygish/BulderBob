@@ -377,7 +377,34 @@ button.company-chip,
 }
 
 .reputation-metric {
+  position: relative;
   color: var(--blue);
+}
+
+.rep-tooltip {
+  position: absolute;
+  top: calc(100% + 9px);
+  right: 0;
+  width: 250px;
+  padding: 10px 12px;
+  background: var(--ink);
+  color: var(--on-dark);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .22);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity .15s ease, transform .15s ease, visibility .15s;
+  z-index: 60;
+}
+
+.reputation-metric:hover .rep-tooltip,
+.reputation-metric:focus-within .rep-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
 }
 
 .main-content {
@@ -1312,6 +1339,15 @@ progress.progress::-moz-progress-bar {
   font-size: var(--text-xs);
 }
 
+.season-copy .eyebrow,
+.season-copy p,
+.season-progress span,
+.season-progress strong,
+.season-rep,
+.season-rep strong {
+  color: var(--text);
+}
+
 .kpi-card span,
 .kpi-card small {
   font-size: var(--text-xs);
@@ -1505,6 +1541,13 @@ progress.progress::-moz-progress-bar {
 
 .market-table td::before {
   font-size: var(--text-xs);
+}
+
+.warehouse-summary td {
+  background: var(--paper);
+  border-top: 2px solid var(--line-strong);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
 }
 
 /* Кадры, техника, технологии */
