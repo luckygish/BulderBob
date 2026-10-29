@@ -17,10 +17,10 @@
 ```
 nightMultiplier = 1.5
   · (1 + seasonNightWageRate)
-  · (night_coordinator ? 0.9 : 1)
+  · (night_coordinator ? 0.85 : 1)
 ```
 
-С «Ночным координатором» базовый тариф становится 1,35.
+С «Ночным координатором» базовый тариф становится 1,275.
 
 ---
 
@@ -41,7 +41,7 @@ nightMultiplier = 1.5
 Каждая отрицательная сезонная ставка применяется так:
 
 ```
-effectiveRate = seasonRate · (seasonal_planning ? 0.9 : 1)
+effectiveRate = seasonRate · (seasonal_planning ? 0.8 : 1)
 ```
 
 Затем:
@@ -76,18 +76,22 @@ paused = true
 | ID | Ветка | Цена | Дней | Требование | Эффект |
 | --- | --- | ---: | ---: | --- | --- |
 | `planning_1` | Управление | 300 000 | 2 | — | 2 объекта |
-| `seasonal_planning` | Управление | 450 000 | 3 | `planning_1` | Дебаффы сезона ×0,9 |
-| `planning_2` | Управление | 1 500 000 | 4 | `planning_1` | 3 объекта |
-| `planning_3` | Управление | 2 500 000 | 7 | `planning_2` | 4 объекта |
-| `worker_training` | Персонал | 200 000 | 2 | — | +0,2 эффективности |
-| `night_coordinator` | Персонал | 400 000 | 3 | `worker_training` | Ночной тариф ×0,9 |
-| `prof_standards` | Персонал | 800 000 | 4 | `worker_training` | +0,4 и вторая бригада |
-| `automation` | Персонал | 1 200 000 | 5 | `prof_standards` | Ночные смены |
+| `seasonal_planning` | Управление | 450 000 | 3 | `planning_1` | Дебаффы сезона ×0,8 |
+| `project_coordination` | Управление | 500 000 | 3 | `seasonal_planning` | Сроки новых заказов +2 дня |
+| `city_license` | Управление | 1 600 000 | 5 | `planning_1` | Городские контракты (реп. 70, капитал 10 млн) |
+| `pr_department` | Управление | 1 200 000 | 5 | `city_license` | +2 репутации за каждый 5-й сданный объект |
+| `region_license` | Управление | 3 200 000 | 7 | `city_license` | Областные контракты (реп. 80, капитал 15 млн) |
+| `worker_training` | Персонал | 200 000 | 2 | — | +0,25 эффективности |
+| `manpower_reserve` | Персонал | 350 000 | 3 | `worker_training` | +0,15 эффективности |
+| `night_coordinator` | Персонал | 400 000 | 3 | `worker_training` | Ночной тариф ×0,85 |
+| `prof_standards` | Персонал | 800 000 | 4 | `worker_training` | +0,45 и вторая бригада |
+| `automation` | Персонал | 1 000 000 | 5 | `prof_standards` | Ночные смены (капитал 2,5 млн) |
 | `bank_account` | Финансы | 150 000 | 1 | — | Банк и отчётность |
-| `overdraft` | Финансы | 350 000 | 2 | `bank_account` | Лимит долга 300 000 ₽ |
-| `good_leasing` | Финансы | 500 000 | 3 | `bank_account` | Лизинг −5% |
-| `dealer_network` | Финансы | 500 000 | 3 | `good_leasing` | Продажа техники 80% |
-| `factoring` | Финансы | 400 000 | 4 | `good_leasing` | Аванс 30%, комиссия 2% |
+| `reserve_fund` | Финансы | 400 000 | 3 | `bank_account` | +500 000 ₽ в начале сезона |
+| `overdraft` | Финансы | 350 000 | 2 | `bank_account` | Лимит долга 400 000 ₽ |
+| `good_leasing` | Финансы | 500 000 | 3 | `bank_account` | Лизинг −8% |
+| `dealer_network` | Финансы | 500 000 | 3 | `good_leasing` | Продажа техники 85% |
+| `factoring` | Финансы | 400 000 | 4 | `good_leasing` | Аванс 40%, комиссия 1,5% |
 
 ---
 
@@ -178,7 +182,7 @@ progress += crewEfficiency · (1 + equipmentBonus) / stageManHours
 Продажа:
 
 ```
-saleRate = dealer_network ? 0.8 : 0.7
+saleRate = dealer_network ? 0.85 : 0.7
 sellPrice = round(basePrice · saleRate)
 ```
 
@@ -224,7 +228,7 @@ finalPayment = max(0, budget − penalty − advance)
 money += finalPayment
 ```
 
-При факторинге 30% бюджета уже получено при взятии заказа за вычетом комиссии 2%.
+При факторинге 40% бюджета уже получено при взятии заказа за вычетом комиссии 1,5%.
 
 ### Прибыль и репутация
 
@@ -262,7 +266,7 @@ P(особый заказ каждые 3 дня) = 0.20
 ### Обычный долг
 
 - Без овердрафта любой долг блокирует новые расходы и стройку.
-- После овердрафта блокировка начинается при `debt > 300 000 ₽`.
+- После овердрафта блокировка начинается при `debt > 400 000 ₽`.
 - Каждый день до автопогашения:
 
 ```

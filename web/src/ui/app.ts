@@ -9,7 +9,7 @@ import type { SaveMeta } from '../game/persistence'
 import { companyStatus, projectCosts } from '../game/selectors'
 import { workDayEnd } from '../game/seasons'
 import type { ActionResult, EquipmentId, GameState, ProvisionId, Speed, SupplierId } from '../game/types'
-import { badge, compactMoney, companyAvatarSvg, esc, journalItem, money, pad } from './components'
+import { badge, compactMoney, companyAvatar, esc, journalItem, money, pad } from './components'
 import { icon } from './icons'
 import { eventPortrait } from './eventArt'
 import { renderBank } from './pages/bank'
@@ -298,7 +298,7 @@ export class App {
     const markup = `<div class="app-shell ${this.navOpen ? 'nav-open' : ''}">
       <aside class="sidebar" aria-label="Основная навигация">
         <div class="brand"><span class="brand-mark">${icon('logo')}</span><div><strong>Bulder</strong><span>Строим бизнес</span></div><button class="icon-btn sidebar-close" data-action="close-nav" aria-label="Закрыть меню">${icon('close')}</button></div>
-        <button class="company-chip" data-route="company">${companyAvatarSvg(state.companyAvatar, 'company-avatar-small')}<div><strong>${esc(state.companyName)}</strong><span>${company.name}</span></div><span class="status-dot"></span></button>
+        <button class="company-chip" data-route="company">${companyAvatar(state.companyAvatar, 'company-avatar-small')}<div><strong>${esc(state.companyName)}</strong><span>${company.name}</span></div><span class="status-dot"></span></button>
         <nav class="main-nav">${navMarkup}</nav>
         <div class="sidebar-season"><div class="eyebrow">Текущий сезон</div><div><strong>День ${state.day}</strong><span>/ ${BALANCE.seasonDays}</span></div><div class="season-track"><span style="width:${Math.min(100, state.day / BALANCE.seasonDays * 100)}%"></span></div><p>Капитал ${compactMoney(netWorth(state))}</p></div>
         <div class="sidebar-footer" title="${esc(this.activeSave ?? '')}"><span class="status-dot"></span><span class="save-file-label">${saveName ? `Сохранить: ${esc(saveName)}` : 'Новый сейв не создан'}</span></div>
@@ -370,7 +370,7 @@ export class App {
         this.renderStartScreen()
         void this.loadSavedGame(button.dataset.file ?? '')
         break
-      case 'select-avatar': this.state!.companyAvatar = Math.max(0, Math.min(4, Number(id))); this.commit({ ok: true, message: 'Аватар компании обновлён.' }); break
+      case 'select-avatar': this.state!.companyAvatar = Math.max(0, Math.min(5, Number(id))); this.commit({ ok: true, message: 'Аватар компании обновлён.' }); break
       case 'save-company': this.saveCompanyName(); break
       case 'pause': togglePause(this.state!); this.commit(); break
       case 'speed': setSpeed(this.state!, Number(id) as Speed); this.commit(); break
@@ -546,7 +546,7 @@ this.notify(result.message, result.ok ? 'success' : 'error')
 
   private showLease(id: EquipmentId): void {
     const item = equipmentById(id)
-    const discount = isResearched(this.state!, 'good_leasing') ? 0.95 : 1
+    const discount = isResearched(this.state!, 'good_leasing') ? 0.92 : 1
     const total = Math.round(item.price * (1 + BALANCE.leaseInterest) * discount)
     const down = Math.round(item.price * BALANCE.leaseDownPayment)
     this.openModal(`<div class="modal-icon">${icon('document')}</div><div class="eyebrow">Лизинг на ${BALANCE.leaseDays} дней</div><h2>${item.name}</h2><dl class="cost-list"><div><dt>Первый взнос 20%</dt><dd>${money(down)}</dd></div><div><dt>Полная стоимость</dt><dd>${money(total)}</dd></div><div><dt>Платёж в день</dt><dd>${money(Math.ceil((total - down) / BALANCE.leaseDays))}</dd></div><div><dt>Переплата</dt><dd>${money(total - item.price)}</dd></div></dl><div class="button-row modal-actions"><button class="btn btn-secondary" data-action="close-modal">Отмена</button><button class="btn btn-primary" data-action="confirm-lease" data-id="${id}">Оформить лизинг</button></div>`)
@@ -564,7 +564,7 @@ this.notify(result.message, result.ok ? 'success' : 'error')
     const asset = this.state!.equipment.find((item) => item.assetId === assetId)
     if (!asset) return
     const item = equipmentById(asset.id)
-    const saleRate = this.state!.research.dealer_network?.status === 'done' ? 0.8 : 0.7
+    const saleRate = this.state!.research.dealer_network?.status === 'done' ? 0.85 : 0.7
     const price = Math.round(item.price * saleRate)
     this.openModal(`<div class="modal-icon warning">${icon('equipment')}</div><div class="eyebrow">Продажа техники</div><h2>${item.name}</h2><p>Собственную технику можно продать за ${Math.round(saleRate * 100)}% исходной цены. Техника будет снята с объекта, если назначена.</p><dl class="cost-list"><div><dt>Исходная цена</dt><dd>${money(item.price)}</dd></div><div><dt>Цена продажи</dt><dd class="positive">${money(price)}</dd></div><div><dt>Потеря капитала</dt><dd class="negative">−${money(item.price - price)}</dd></div></dl><div class="button-row modal-actions"><button class="btn btn-secondary" data-action="close-modal">Отмена</button><button class="btn btn-danger" data-action="confirm-sell-equipment" data-id="${asset.assetId}">Продать</button></div>`)
   }

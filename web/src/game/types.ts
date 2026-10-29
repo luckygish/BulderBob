@@ -58,7 +58,7 @@ export interface EquipmentAsset {
 export interface Loan { amount: number; rate: number; total: number; daily: number; remaining: number }
 export interface Research { status: 'researching' | 'done'; progress: number }
 export interface BotProject { job: Job; stages: StageState[]; currentStage: number; materialSpent: number; wagesPaid: number; rentalPaid: number; progress: number }
-export interface Bot { id: string; name: string; strategy: 'aggressive' | 'moderate' | 'conservative'; money: number; totalProfit: number; jobsDone: number; state: 'idle' | 'working' | 'cooldown'; cooldown: number; crew: Worker[]; crewTarget: number; projects: BotProject[]; loan: Loan | null }
+export interface Bot { id: string; name: string; strategy: 'aggressive' | 'moderate' | 'conservative'; money: number; totalProfit: number; jobsDone: number; state: 'idle' | 'working' | 'cooldown'; cooldown: number; crew: Worker[]; crewTarget: number; projects: BotProject[]; loan: Loan | null; corporation?: boolean; projectLimit?: number }
 export interface JournalEntry { id: string; day: number; hour: number; kind: 'info' | 'success' | 'warning' | 'money'; text: string }
 export interface SeasonGoal { capital: number; reputation: number; completed: number }
 export interface SeasonDef {
@@ -74,7 +74,7 @@ export interface EventOption {
   label: string
   hint?: string
   requiresReputation?: number
-  effect: { cash?: number; reputation?: number; delayDays?: number; seasonPriceBonus?: number }
+  effect: { cash?: number; reputation?: number; delayDays?: number; seasonPriceBonus?: number; seasonDeadlineBonus?: number; seasonWageBonus?: number }
   outcome: string
 }
 export interface EventDef {
@@ -85,6 +85,8 @@ export interface EventDef {
   title: string
   text: string
   options: EventOption[]
+  requiresLicense?: 'city' | 'region'
+  when?: (state: GameState) => boolean
 }
 export interface FinanceSnapshot { day: number; capital: number; cash: number; reputation: number; seasonCompleted: number }
 
@@ -129,6 +131,9 @@ export interface GameState {
   event: string | null
   eventsFired: string[]
   seasonPriceBonus: number
+  seasonDeadlineBonus: number
+  seasonWageBonus: number
+  corpFinalChoice: 'sold' | 'fight' | null
 }
 
 export interface Quote { qty: number; cost: number; fee: number; total: number; arriveDay: number; available: number }

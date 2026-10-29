@@ -26,7 +26,7 @@ export function createNewGame(seed = Date.now()): GameState {
     provisions: Object.fromEntries(PROVISIONS.map((p) => [p.id, 0])) as GameState['provisions'],
     research: {}, loan: null, bots: [], journal: [], totalRevenue: 0,
     seasonIndex: 0, seasonCompleted: 0, seasonRevenue: 0, completedTutorial: [], equipmentSold: 0, usedSuppliers: [], seasonNotice: null,
-    companyName: 'Ваша компания', companyAvatar: 0, financeHistory: [], event: null, eventsFired: [], seasonPriceBonus: 0,
+    companyName: 'Ваша компания', companyAvatar: 0, financeHistory: [], event: null, eventsFired: [], seasonPriceBonus: 0, seasonDeadlineBonus: 0, seasonWageBonus: 0, corpFinalChoice: null,
   }
   for (const supplier of ['north', 'south'] as SupplierId[]) {
     for (const material of MATERIALS) {
@@ -54,6 +54,16 @@ function createBot(state: GameState, name: string, strategy: Bot['strategy']): B
   return { id: nextId(state, 'bot'), name, strategy, money: 2_000_000, totalProfit: 0, jobsDone: 0, state: 'idle', cooldown: 0, crew: [], crewTarget: BALANCE.botCrewSeason0, projects: [], loan: null }
 }
 
+function createCorpBot(state: GameState): Bot {
+  return { id: nextId(state, 'bot'), name: BALANCE.corpName, strategy: 'aggressive', money: BALANCE.corpMoney, totalProfit: 0, jobsDone: 0, state: 'idle', cooldown: 0, crew: [], crewTarget: BALANCE.corpCrewTarget, projects: [], loan: null, corporation: true, projectLimit: BALANCE.corpProjectLimit }
+}
+
+export function ensureCorpBot(state: GameState): void {
+  if (state.seasonIndex < BALANCE.corpSeason || state.bots.some((bot) => bot.corporation)) return
+  state.bots.push(createCorpBot(state))
+  addLog(state, `Корпорация «${BALANCE.corpName}» выходит на рынок.`, 'warning')
+}
+
 export function makeStages(building: Job['building']): StageState[] {
   return buildingById(building).stages.map(() => ({ status: 'not_started', progress: 0, stock: {} }))
 }
@@ -64,7 +74,8 @@ export function createJob(state: GameState, forcedBuilding?: Job['building']): J
     : BUILDINGS.filter((b) => !b.special && b.minReputation <= state.reputation && (!b.requiredLicense || isLicenseUnlocked(state, b.requiredLicense)))
   const def = pick(state, available)
   const manHours = def.stages.reduce((sum, stage) => sum + stage.manHours, 0)
-  const duration = 4 + Math.ceil(manHours / 35) + randomInt(state, 0, def.special ? 5 : 3)
+  const raw = 4 + Math.ceil(manHours / 35) + randomInt(state, 0, def.special ? 5 : 3)
+  const duration = Math.round(raw * (1 + (state.seasonDeadlineBonus ?? 0))) + (isResearched(state, 'project_coordination') ? 2 : 0)
   const deadline = state.day + duration
   return {
     id: nextId(state, 'job'), client: pick(state, CLIENTS), building: def.id,
@@ -142,9 +153,8 @@ export function maxCrews(state: GameState): number {
 }
 
 export function workerBonus(state: GameState): number {
-  if (isResearched(state, 'prof_standards')) return 0.4
-  if (isResearched(state, 'worker_training')) return 0.2
-  return 0
+  const base = isResearched(state, 'prof_standards') ? 0.45 : isResearched(state, 'worker_training') ? 0.25 : 0
+  return base + (isResearched(state, 'manpower_reserve') ? 0.15 : 0)
 }
 
 export function crewEfficiency(workers: Worker[], bonus = 0): number {
@@ -237,7 +247,7 @@ function addProjectInventory(project: Project, material: MaterialId, qty: number
 }
 
 export function overdraftLimit(state: GameState): number {
-  return state.research.overdraft?.status === 'done' ? 300_000 : 0
+  return state.research.overdraft?.status === 'done' ? 400_000 : 0
 }
 
 export function isDebtBlocked(state: GameState): boolean {
@@ -435,7 +445,7 @@ function processProjectHour(state: GameState, project: Project): void {
   if (workers.length === 0) return
   const dayEnd = workDayEnd(state)
   const night = state.hour < BALANCE.workDayStart || state.hour >= dayEnd
-  const wages = Math.round(crewHourly(workers) * (1 + seasonWageRate(state)) * (night ? seasonNightWageMultiplier(state) : 1))
+  const wages = Math.round(crewHourly(workers) * (1 + seasonWageRate(state)) * (1 + (state.seasonWageBonus ?? 0)) * (night ? seasonNightWageMultiplier(state) : 1))
   project.laborCost += wages
   project.totalHours += 1
   const asset = state.equipment.find((item) => item.assetId === project.equipmentAssetId)
@@ -488,6 +498,9 @@ function completeProject(state: GameState, project: Project): void {
   state.reputation = Math.max(0, Math.min(100, state.reputation + (lateDays > 0 ? -2 * lateDays : def.reputationReward ?? 2)))
   returnReservedMaterials(state, project)
   state.completed.unshift(project)
+  if (isResearched(state, 'pr_department') && state.completed.length % 5 === 0) {
+    state.reputation = Math.max(0, Math.min(100, state.reputation + 2))
+  }
   state.projects = state.projects.filter((item) => item !== project)
   for (const asset of state.equipment) if (asset.projectId === project.id) asset.projectId = null
   const nextProject = state.projects.find((item) => item.crewIds.length < requiredCrews(item))
@@ -631,6 +644,10 @@ export function botProjectLimit(state: GameState): number {
   return state.seasonIndex >= 2 || isResearched(state, 'planning_1') ? 2 : 1
 }
 
+export function botCap(state: GameState, bot: Bot): number {
+  return bot.projectLimit ?? botProjectLimit(state)
+}
+
 function botPickJob(state: GameState, bot: Bot): void {
   if (state.seasonIndex >= 1 && bot.crewTarget < BALANCE.botCrewMin) bot.crewTarget = randomInt(state, BALANCE.botCrewMin, BALANCE.botCrewMax)
   const options = state.jobs.filter((job) => !job.special).map((job) => ({ job, estimate: botEstimate(state, job) })).filter((item) => item.estimate.margin > item.job.budget * 0.1 && bot.money >= item.estimate.materials * 0.7)
@@ -640,6 +657,7 @@ function botPickJob(state: GameState, bot: Bot): void {
   })
   const selected = options[0]
   if (!selected) return
+  if (isResearched(state, 'project_coordination')) selected.job.deadline -= 2
   state.jobs = state.jobs.filter((job) => job.id !== selected.job.id)
   bot.projects.push({ job: selected.job, stages: makeStages(selected.job.building), currentStage: 0, materialSpent: 0, wagesPaid: 0, rentalPaid: 0, progress: 0 })
   bot.state = 'working'
@@ -687,8 +705,8 @@ function tickBot(state: GameState, bot: Bot): void {
     bot.loan.remaining -= payment
     if (bot.loan.remaining <= 0) bot.loan = null
   }
-  if (bot.projects.length < botProjectLimit(state)) botPickJob(state, bot)
-  if (bot.projects.length < botProjectLimit(state)) botPickJob(state, bot)
+  const cap = botCap(state, bot)
+  for (let i = 0; i < cap && bot.projects.length < cap; i += 1) botPickJob(state, bot)
   if (bot.projects.length === 0) return
 
   while (bot.crew.length < bot.crewTarget && state.candidates.length > 0) {
@@ -767,6 +785,7 @@ function tickBot(state: GameState, bot: Bot): void {
 }
 
 function dailyTick(state: GameState): void {
+  ensureCorpBot(state)
   arriveDeliveries(state)
   settleDailyObligations(state)
   const offset = state.day % state.bots.length
@@ -793,7 +812,7 @@ function dailyTick(state: GameState): void {
   const additions = randomInt(state, 1, 2)
   for (let i = 0; i < additions && state.jobs.length < 5; i += 1) state.jobs.push(createJob(state))
   while (state.jobs.length < 3) state.jobs.push(createJob(state, state.reputation < 40 ? 'reconstruction' : undefined))
-  const eventDef = EVENTS.find((e) => e.season === state.seasonIndex && e.day === state.day && !(state.eventsFired ?? []).includes(e.id))
+  const eventDef = EVENTS.find((e) => e.season === state.seasonIndex && e.day === state.day && !(state.eventsFired ?? []).includes(e.id) && (!e.requiresLicense || isLicenseUnlocked(state, e.requiresLicense)) && (!e.when || e.when(state)))
   if (eventDef) {
     state.event = eventDef.id
     state.eventsFired.push(eventDef.id)
@@ -810,8 +829,12 @@ function transitionSeason(state: GameState): void {
   const final = state.seasonIndex >= 9
   state.reputation = Math.max(0, Math.min(100, state.reputation + (success ? 5 : -15)))
   if (!final) state.seasonIndex += 1
+  if (isResearched(state, 'reserve_fund')) {
+    state.money += 500_000
+    addLog(state, 'Резервный фонд: +500 000 ₽ на новый сезон.', 'money')
+  }
   for (const bot of state.bots) {
-    if (state.seasonIndex >= 1) bot.crewTarget = randomInt(state, BALANCE.botCrewMin, BALANCE.botCrewMax)
+    if (state.seasonIndex >= 1 && !bot.corporation) bot.crewTarget = randomInt(state, BALANCE.botCrewMin, BALANCE.botCrewMax)
   }
   for (const project of state.projects) {
     project.job.deadline -= BALANCE.seasonDays
@@ -836,6 +859,8 @@ function transitionSeason(state: GameState): void {
   state.seasonCompleted = 0
   state.seasonRevenue = 0
   state.seasonPriceBonus = 0
+  state.seasonDeadlineBonus = 0
+  state.seasonWageBonus = 0
   processSupply(state)
   const additions = randomInt(state, 1, 2)
   for (let i = 0; i < additions && state.jobs.length < 5; i += 1) state.jobs.push(createJob(state))
@@ -903,7 +928,7 @@ export function acquireEquipment(state: GameState, id: EquipmentId, mode: Equipm
     if (!spend(state, hours * def.rentPerHour)) return { ok: false, message: 'Недостаточно денег.' }
     state.equipment.push({ assetId, id, status: mode, projectId: null, hoursRemaining: hours, leaseRemaining: 0, leaseDaily: 0 })
   } else {
-    const discount = isResearched(state, 'good_leasing') ? 0.95 : 1
+    const discount = isResearched(state, 'good_leasing') ? 0.92 : 1
     const total = Math.round(def.price * (1 + BALANCE.leaseInterest) * discount)
     const down = Math.round(def.price * BALANCE.leaseDownPayment)
     if (!spend(state, down)) return { ok: false, message: `Для первого взноса нужно ${down.toLocaleString('ru-RU')} ₽.` }
@@ -918,7 +943,7 @@ export function sellEquipment(state: GameState, assetId: string): ActionResult {
   const asset = state.equipment.find((item) => item.assetId === assetId)
   if (!asset) return { ok: false, message: 'Техника не найдена.' }
   if (asset.status !== 'owned') return { ok: false, message: 'Можно продать только собственную технику.' }
-  const saleRate = state.research.dealer_network?.status === 'done' ? 0.8 : 0.7
+  const saleRate = state.research.dealer_network?.status === 'done' ? 0.85 : 0.7
   const price = Math.round(equipmentById(asset.id).price * saleRate)
   if (asset.projectId) {
     const project = state.projects.find((item) => item.id === asset.projectId)
@@ -957,6 +982,20 @@ export function resolveEvent(state: GameState, eventId: string, optionIndex: num
     for (const project of state.projects) project.job.deadline += option.effect.delayDays
   }
   if (option.effect.seasonPriceBonus) state.seasonPriceBonus = Math.max(0, state.seasonPriceBonus + option.effect.seasonPriceBonus)
+  if (option.effect.seasonWageBonus) state.seasonWageBonus = Math.max(0, state.seasonWageBonus + option.effect.seasonWageBonus)
+  if (option.effect.seasonDeadlineBonus) {
+    state.seasonDeadlineBonus = Math.max(0, state.seasonDeadlineBonus + option.effect.seasonDeadlineBonus)
+    const bonus = option.effect.seasonDeadlineBonus
+    for (const project of state.projects) {
+      const rem = Math.max(0, project.job.deadline - state.day)
+      project.job.deadline += Math.max(1, Math.round(rem * bonus))
+    }
+    for (const job of state.jobs) {
+      const rem = Math.max(0, job.deadline - state.day)
+      job.deadline += Math.max(1, Math.round(rem * bonus))
+    }
+  }
+  if (def.id === 'corp_final') state.corpFinalChoice = optionIndex === 0 ? 'sold' : 'fight'
   state.event = null
   state.paused = false
   const kind: GameState['journal'][number]['kind'] = cost < 0 ? 'money' : option.effect.reputation && option.effect.reputation < 0 ? 'warning' : option.effect.reputation ? 'success' : option.effect.delayDays ? 'warning' : 'info'

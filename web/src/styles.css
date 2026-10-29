@@ -50,7 +50,7 @@ p { color: var(--muted); line-height: 1.55; }
 .brand span:not(.brand-mark) { font-size: 10px; text-transform: uppercase; letter-spacing: 1.7px; color: #91a2a8; margin-top: -1px; }
 .sidebar-close { display: none !important; margin-left: auto; }
 .company-chip { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.07); border-radius: 10px; padding: 10px; margin-bottom: 25px; }
-.company-avatar { width: 32px; height: 32px; flex: 0 0 auto; border-radius: 7px; display: grid; place-items: center; background: #324850; color: #f5c1a5; font-size: 11px; font-weight: 700; }
+.company-avatar { width: 32px; height: 32px; flex: 0 0 auto; border-radius: 7px; display: block; object-fit: cover; }
 .company-chip > div { display: flex; flex: 1; flex-direction: column; gap: 3px; }
 .company-chip strong { font-size: 12px; }
 .company-chip div span { font-size: 10px; color: #8ea0a7; }
@@ -653,11 +653,6 @@ button.company-chip { width: 100%; color: #dce5e8; text-align: left; cursor: poi
 button.company-chip:hover { background: rgba(255,255,255,.085); }
 .company-avatar-small { width: 31px; height: 31px; }
 .company-avatar-large { width: 72px; height: 72px; }
-.avatar-0 { color: #ef7538; }
-.avatar-1 { color: #2f7fa8; }
-.avatar-2 { color: #59666b; }
-.avatar-3 { color: #4f9f73; }
-.avatar-4 { color: #a98247; }
 .company-layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; align-items: start; margin-bottom: 16px; }
 .company-layout > .card { padding: 20px; }
 .company-layout ~ section.card { margin-top: 16px; padding: 20px; }
@@ -667,11 +662,11 @@ button.company-chip:hover { background: rgba(255,255,255,.085); }
 .button-row .field-hint { margin-left: 8px; }
 .company-profile-main h2 { font-size: 22px; }
 .company-profile-main p { color: var(--muted); font-size: 10px; margin: 6px 0 10px; }
-.avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.avatar-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .avatar-option { border: 1px solid var(--line); background: #fff; border-radius: 8px; min-height: 94px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text); cursor: pointer; }
 .avatar-option:hover { border-color: #c8d4cf; }
 .avatar-option.active { border-color: var(--orange); box-shadow: 0 0 0 2px rgba(239,117,56,.13); }
-.avatar-option .company-avatar { width: 42px; height: 42px; }
+.avatar-option .company-avatar { width: 42px; height: 42px; border-radius: 8px; }
 .avatar-option span { font-size: 9px; color: var(--muted); }
 .status-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .status-list > div { border: 1px solid var(--line-soft); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }

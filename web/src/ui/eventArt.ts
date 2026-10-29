@@ -4,6 +4,10 @@ import worker from '../../assets/worker.png'
 import inspect from '../../assets/inspect.png'
 import clients from '../../assets/clients.png'
 import happyman from '../../assets/happyman.png'
+import happywife from '../../assets/happywife.png'
+import investor from '../../assets/investor.png'
+import other from '../../assets/other.png'
+import bulder from '../../assets/bulder.png'
 import { EVENT_ART } from './eventArtMap'
 
 const IMAGES: Record<string, string> = {
@@ -13,6 +17,10 @@ const IMAGES: Record<string, string> = {
   inspect,
   clients,
   happyman,
+  happywife,
+  investor,
+  other,
+  bulder,
 }
 
 const MAP: Record<string, string> = Object.fromEntries(

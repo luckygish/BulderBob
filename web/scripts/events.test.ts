@@ -2,11 +2,13 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { EVENTS } from '../src/game/events'
 import { EVENT_ART } from '../src/ui/eventArtMap'
-import { createNewGame, resolveEvent } from '../src/game/engine'
-import type { GameState } from '../src/game/types'
+import { acquireEquipment, assignEquipment, createJob, createNewGame, resolveEvent, tickHour } from '../src/game/engine'
+import { buyMissingForProject, buyProvision, hireWorker, startFullProject, takeJob, assignCrew } from '../src/game/actions'
+import { buildingById, PROVISIONS } from '../src/game/catalog'
+import type { GameState, Project } from '../src/game/types'
 
-const EFFECT_KEYS = ['cash', 'reputation', 'delayDays', 'seasonPriceBonus']
-const IMAGES = ['wife', 'traider', 'worker', 'inspect', 'clients', 'happyman']
+const EFFECT_KEYS = ['cash', 'reputation', 'delayDays', 'seasonPriceBonus', 'seasonDeadlineBonus', 'seasonWageBonus']
+const IMAGES = ['wife', 'traider', 'worker', 'inspect', 'clients', 'happyman', 'happywife', 'investor', 'other', 'bulder']
 
 function freshState(): GameState {
   const state = createNewGame(7)
@@ -18,9 +20,29 @@ function freshState(): GameState {
   return state
 }
 
+function setupWorkingProject(state: GameState): Project {
+  state.reputation = 90
+  for (const provision of PROVISIONS) assert.equal(buyProvision(state, provision.id).ok, true)
+  const job = createJob(state, 'reconstruction')
+  state.jobs.push(job)
+  assert.equal(takeJob(state, job.id).ok, true)
+  const project = state.projects[0]
+  while (state.crews[0].workers.length < 3 && state.candidates.length > 0) {
+    const worker = state.candidates[0]
+    assert.equal(hireWorker(state, worker.id, 0).ok, true)
+  }
+  assert.equal(assignCrew(state, project.id, 0, 0).ok, true)
+  assert.equal(buyMissingForProject(state, project.id, 'north').ok, true)
+  acquireEquipment(state, 'mixer', 'rented', 400)
+  const mixer = state.equipment.at(-1)!
+  assignEquipment(state, project, mixer.assetId)
+  assert.equal(startFullProject(state, project.id).ok, true)
+  return project
+}
+
 describe('ивенты: инварианты набора', () => {
-  it('всего 32 события, id уникальны', () => {
-    assert.equal(EVENTS.length, 32)
+  it('всего 65 событий, id уникальны', () => {
+    assert.equal(EVENTS.length, 65)
     assert.equal(new Set(EVENTS.map((event) => event.id)).size, EVENTS.length)
   })
 
@@ -29,6 +51,7 @@ describe('ивенты: инварианты набора', () => {
     for (const event of EVENTS) {
       assert.ok(event.day >= 1 && event.day <= 90, `${event.id}: день ${event.day}`)
       assert.ok(event.season >= 0 && event.season <= 9, `${event.id}: сезон ${event.season}`)
+      if (event.when) continue
       const key = `${event.season}:${event.day}`
       assert.ok(!slots.has(key), `дубликат слота ${key} у ${event.id}`)
       slots.add(key)
@@ -98,5 +121,88 @@ describe('ивенты: смоук resolveEvent', () => {
     assert.equal(result.ok, false)
     assert.equal(state.paused, true)
     assert.equal(state.event, null)
+  })
+})
+
+describe('ивенты: новые механики сезона', () => {
+  it('investor_offer: +2 000 000 ₽, сезонный бонус 15% к срокам продлевает заказы', () => {
+    const state = freshState()
+    state.money = 1_000_000
+    const job = createJob(state, 'reconstruction')
+    state.jobs.push(job)
+    assert.equal(takeJob(state, job.id).ok, true)
+    const project = state.projects[0]
+    const boardJob = state.jobs[0]
+    const day = state.day
+    const projectDeadlineBefore = project!.job.deadline
+    const jobDeadlineBefore = boardJob.deadline
+    const result = resolveEvent(state, 'investor_offer', 0)
+    assert.equal(result.ok, true)
+    assert.equal(state.money, 1_000_000 + 2_000_000)
+    assert.equal(state.seasonDeadlineBonus, 0.15)
+    const projectExpectation = projectDeadlineBefore + Math.max(1, Math.round(Math.max(0, projectDeadlineBefore - day) * 0.15))
+    assert.equal(project!.job.deadline, projectExpectation)
+    const jobExpectation = jobDeadlineBefore + Math.max(1, Math.round(Math.max(0, jobDeadlineBefore - day) * 0.15))
+    assert.equal(boardJob.deadline, jobExpectation)
+  })
+
+  it('createJob: сезонный бонус сроков умножает длительность', () => {
+    const state = freshState()
+    state.seasonDeadlineBonus = 0.15
+    const job = createJob(state, 'reconstruction')
+    const manHours = buildingById('reconstruction').stages.reduce((sum, stage) => sum + stage.manHours, 0)
+    const rawBase = 4 + Math.ceil(manHours / 35)
+    const duration = job.deadline - state.day
+    assert.ok(duration >= Math.round(rawBase * 1.15) - 1, `длительность ${duration} меньше ожидаемой`)
+    assert.ok(duration <= Math.round((rawBase + 2) * 1.15) + 1, `длительность ${duration} больше ожидаемой`)
+  })
+
+  it('corp_recruit: зарплата всех бригад +30% учитывается в начислении часов', () => {
+    const state = freshState()
+    state.money = 50_000_000
+    const project = setupWorkingProject(state)
+    const baseWage = project.laborCost
+    state.paused = false
+    tickHour(state)
+    const normalGain = project.laborCost - baseWage
+
+    const stateB = freshState()
+    stateB.money = 50_000_000
+    const projectB = setupWorkingProject(stateB)
+    const baseWageB = projectB.laborCost
+    assert.equal(resolveEvent(stateB, 'corp_recruit', 0).ok, true)
+    assert.equal(stateB.seasonWageBonus, 0.3)
+    stateB.paused = false
+    tickHour(stateB)
+    const bonusGain = projectB.laborCost - baseWageB
+    assert.ok(bonusGain > normalGain, `зарплата с бонусом ${bonusGain} должна быть выше обычной ${normalGain}`)
+  })
+
+  it('corp_final: продажа → окно "преданная мечта" на 9:86', () => {
+    const state = freshState()
+    state.seasonIndex = 9
+    state.day = 85
+    state.hour = 23
+    state.paused = false
+    const result = resolveEvent(state, 'corp_final', 0)
+    assert.equal(result.ok, true)
+    assert.equal(state.corpFinalChoice, 'sold')
+    tickHour(state)
+    assert.equal(state.day, 86)
+    assert.equal(state.event, 'corp_final_sold')
+  })
+
+  it('corp_final: отказ → окно "настоящая акула" на 9:86', () => {
+    const state = freshState()
+    state.seasonIndex = 9
+    state.day = 85
+    state.hour = 23
+    state.paused = false
+    const result = resolveEvent(state, 'corp_final', 1)
+    assert.equal(result.ok, true)
+    assert.equal(state.corpFinalChoice, 'fight')
+    tickHour(state)
+    assert.equal(state.day, 86)
+    assert.equal(state.event, 'corp_final_fight')
   })
 })

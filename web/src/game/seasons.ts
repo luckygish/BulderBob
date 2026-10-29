@@ -19,7 +19,7 @@ export function currentSeason(state: GameState): SeasonDef {
 }
 
 function seasonalPlanningMultiplier(state: GameState): number {
-  return state.research.seasonal_planning?.status === 'done' ? 0.9 : 1
+  return state.research.seasonal_planning?.status === 'done' ? 0.8 : 1
 }
 
 export function seasonMaterialPriceRate(state: GameState): number {
@@ -63,7 +63,7 @@ export function seasonMaintenanceRate(state: GameState): number {
 }
 
 export function seasonNightWageMultiplier(state: GameState): number {
-  const coordinatorMultiplier = state.research.night_coordinator?.status === 'done' ? 0.9 : 1
+  const coordinatorMultiplier = state.research.night_coordinator?.status === 'done' ? 0.85 : 1
   return BALANCE.nightWageMultiplier * (1 + (currentSeason(state).effects.nightWageRate ?? 0) * seasonalPlanningMultiplier(state)) * coordinatorMultiplier
 }
 

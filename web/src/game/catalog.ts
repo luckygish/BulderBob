@@ -186,18 +186,22 @@ export const PROVISIONS: ProvisionDef[] = [
 
 export const TECHNOLOGIES: TechDef[] = [
   { id: 'planning_1', name: 'Планирование I', branch: 'Управление', cost: 300_000, days: 2, requires: '', requiresMoney: 0, description: 'До 2 активных объектов.' },
-  { id: 'seasonal_planning', name: 'Сезонное планирование', branch: 'Управление', cost: 450_000, days: 3, requires: 'planning_1', requiresMoney: 0, description: 'Сезонные дебаффы снижены на 10%.' },
-  { id: 'city_license', name: 'Городская лицензия', branch: 'Управление', cost: 2_000_000, days: 5, requires: 'planning_1', requiresMoney: 0, requiresReputation: 70, requiresCapital: 10_000_000, description: 'Открывает контракты: больница, детский сад, парк.' },
-  { id: 'region_license', name: 'Областная лицензия', branch: 'Управление', cost: 4_000_000, days: 7, requires: 'city_license', requiresMoney: 0, requiresReputation: 80, requiresCapital: 15_000_000, description: 'Открывает контракты: ТЭЦ, торговые склады, дороги.' },
-  { id: 'worker_training', name: 'Обучение рабочих', branch: 'Персонал', cost: 200_000, days: 2, requires: '', requiresMoney: 0, description: '+0.2 эффективности каждому работнику.' },
-  { id: 'night_coordinator', name: 'Ночной координатор', branch: 'Персонал', cost: 400_000, days: 3, requires: 'worker_training', requiresMoney: 0, description: 'Ночной тариф снижен на 10%.' },
-  { id: 'prof_standards', name: 'Профстандарты', branch: 'Персонал', cost: 800_000, days: 4, requires: 'worker_training', requiresMoney: 0, description: '+0.4 эффективности и вторая бригада.' },
-  { id: 'automation', name: 'Автоматизация', branch: 'Персонал', cost: 1_200_000, days: 5, requires: 'prof_standards', requiresMoney: 3_000_000, description: 'Ночные смены всем бригадам: стройка 24/7, ночной КПД 75% и оплата ×1.5.' },
+  { id: 'seasonal_planning', name: 'Сезонное планирование', branch: 'Управление', cost: 450_000, days: 3, requires: 'planning_1', requiresMoney: 0, description: 'Сезонные дебаффы снижены на 20%.' },
+  { id: 'project_coordination', name: 'Согласование проектов', branch: 'Управление', cost: 500_000, days: 3, requires: 'seasonal_planning', requiresMoney: 0, description: 'Сроки новых заказов +2 дня.' },
+  { id: 'city_license', name: 'Городская лицензия', branch: 'Управление', cost: 1_600_000, days: 5, requires: 'planning_1', requiresMoney: 0, requiresReputation: 70, requiresCapital: 10_000_000, description: 'Открывает контракты: больница, детский сад, парк.' },
+  { id: 'pr_department', name: 'PR-департамент', branch: 'Управление', cost: 1_200_000, days: 5, requires: 'city_license', requiresMoney: 0, description: '+2 репутации за каждый 5-й сданный объект.' },
+  { id: 'region_license', name: 'Областная лицензия', branch: 'Управление', cost: 3_200_000, days: 7, requires: 'city_license', requiresMoney: 0, requiresReputation: 80, requiresCapital: 15_000_000, description: 'Открывает контракты: ТЭЦ, торговые склады, дороги.' },
+  { id: 'worker_training', name: 'Обучение рабочих', branch: 'Персонал', cost: 200_000, days: 2, requires: '', requiresMoney: 0, description: '+0.25 эффективности каждому работнику.' },
+  { id: 'manpower_reserve', name: 'Кадровый резерв', branch: 'Персонал', cost: 350_000, days: 3, requires: 'worker_training', requiresMoney: 0, description: '+0.15 эффективности каждому работнику.' },
+  { id: 'night_coordinator', name: 'Ночной координатор', branch: 'Персонал', cost: 400_000, days: 3, requires: 'worker_training', requiresMoney: 0, description: 'Ночной тариф снижен на 15%.' },
+  { id: 'prof_standards', name: 'Профстандарты', branch: 'Персонал', cost: 800_000, days: 4, requires: 'worker_training', requiresMoney: 0, description: '+0.45 эффективности и вторая бригада.' },
+  { id: 'automation', name: 'Автоматизация', branch: 'Персонал', cost: 1_000_000, days: 5, requires: 'prof_standards', requiresMoney: 2_500_000, description: 'Ночные смены всем бригадам: стройка 24/7, ночной КПД 75% и оплата ×1.5.' },
   { id: 'bank_account', name: 'Банковский счёт', branch: 'Финансы', cost: 150_000, days: 1, requires: '', requiresMoney: 0, description: 'Открывает кредиты, отчётность и финансовые инструменты.' },
-  { id: 'overdraft', name: 'Овердрафт', branch: 'Финансы', cost: 350_000, days: 2, requires: 'bank_account', requiresMoney: 0, description: 'Долг до 300 000 ₽ не блокирует работу, но растёт на 1% в день.' },
-  { id: 'good_leasing', name: 'Выгодный лизинг', branch: 'Финансы', cost: 500_000, days: 3, requires: 'bank_account', requiresMoney: 0, description: 'Скидка 5% на сумму лизинга.' },
-  { id: 'dealer_network', name: 'Дилерская сеть', branch: 'Финансы', cost: 500_000, days: 3, requires: 'good_leasing', requiresMoney: 0, description: 'Продажа собственной техники за 80% цены.' },
-  { id: 'factoring', name: 'Факторинг', branch: 'Финансы', cost: 400_000, days: 4, requires: 'good_leasing', requiresMoney: 0, description: 'Аванс 30% при заказе, комиссия 2%.' },
+  { id: 'reserve_fund', name: 'Резервный фонд', branch: 'Финансы', cost: 400_000, days: 3, requires: 'bank_account', requiresMoney: 0, description: 'В начале каждого сезона +500 000 ₽ из фонда.' },
+  { id: 'overdraft', name: 'Овердрафт', branch: 'Финансы', cost: 350_000, days: 2, requires: 'bank_account', requiresMoney: 0, description: 'Долг до 400 000 ₽ не блокирует работу, но растёт на 1% в день.' },
+  { id: 'good_leasing', name: 'Выгодный лизинг', branch: 'Финансы', cost: 500_000, days: 3, requires: 'bank_account', requiresMoney: 0, description: 'Скидка 8% на сумму лизинга.' },
+  { id: 'dealer_network', name: 'Дилерская сеть', branch: 'Финансы', cost: 500_000, days: 3, requires: 'good_leasing', requiresMoney: 0, description: 'Продажа собственной техники за 85% цены.' },
+  { id: 'factoring', name: 'Факторинг', branch: 'Финансы', cost: 400_000, days: 4, requires: 'good_leasing', requiresMoney: 0, description: 'Аванс 40% при заказе, комиссия 1,5%.' },
 ]
 
 export const CLIENTS = ['Иванов А.В.', 'Петрова М.С.', 'Сидоров К.Л.', 'Козлова Е.Н.', 'Морозов Д.И.', 'Волкова О.П.', 'Новиков Р.Г.', 'Фёдорова Т.А.']

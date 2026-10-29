@@ -2,7 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { BALANCE } from '../src/game/balance'
 import { buildingById } from '../src/game/catalog'
-import { botProjectLimit, createJob, createNewGame, maxProjects, tickHour } from '../src/game/engine'
+import { botCap, botProjectLimit, createJob, createNewGame, ensureCorpBot, maxProjects, tickHour } from '../src/game/engine'
 import { startResearch } from '../src/game/actions'
 import { COMPANY_STATUSES } from '../src/game/selectors'
 import type { GameState } from '../src/game/types'
@@ -178,5 +178,64 @@ describe('технологии и статусы', () => {
       COMPANY_STATUSES.map((item) => item.capital),
       [0, 3_000_000, 6_000_000, 12_000_000, 21_600_000, 36_000_000],
     )
+  })
+})
+
+describe('корпорация «СтройАльянс»', () => {
+  it('входит с 8-го сезона (индекс 8), один раз, с лимитом 4 и бригадой 8', () => {
+    const state = createNewGame(30)
+    assert.equal(state.bots.some((bot) => bot.corporation), false)
+
+    state.seasonIndex = 7
+    ensureCorpBot(state)
+    assert.equal(state.bots.some((bot) => bot.corporation), false, 'в сезоне 7 корпорации быть не должно')
+
+    state.seasonIndex = 8
+    ensureCorpBot(state)
+    const corp = state.bots.find((bot) => bot.corporation)
+    assert.ok(corp, 'корпорация должна войти в сезоне 8')
+    assert.equal(corp.projectLimit, 4)
+    assert.ok(corp.money >= 20_000_000, `бюджет корпорации ${corp.money}`)
+    assert.equal(corp.crewTarget, 8)
+
+    const count = state.bots.filter((bot) => bot.corporation).length
+    ensureCorpBot(state)
+    ensureCorpBot(state)
+    assert.equal(state.bots.filter((bot) => bot.corporation).length, count, 'не должно быть дублей')
+  })
+
+  it('botCap: обычный бот = botProjectLimit, корпорация = 4', () => {
+    const state = createNewGame(31)
+    state.seasonIndex = 8
+    ensureCorpBot(state)
+    const corp = state.bots.find((bot) => bot.corporation)!
+    const regular = state.bots.find((bot) => !bot.corporation)!
+    assert.equal(botCap(state, corp), 4)
+    assert.equal(botCap(state, regular), botProjectLimit(state))
+  })
+
+  it('корпорация ведёт 3–4 проекта одновременно', () => {
+    const state = createNewGame(32)
+    state.seasonIndex = 8
+    state.bots.forEach((bot) => {
+      bot.state = 'cooldown'
+      bot.cooldown = 9_999
+      bot.projects = []
+    })
+    state.bots.push({
+      id: 'corp_test', name: BALANCE.corpName, strategy: 'aggressive', money: BALANCE.corpMoney,
+      totalProfit: 0, jobsDone: 0, state: 'idle', cooldown: 0, crew: [], crewTarget: 8,
+      projects: [], loan: null,
+      corporation: true, projectLimit: 4,
+    })
+    let peak = 0
+    for (let i = 0; i < 7 * 24; i += 1) {
+      if (state.paused) state.paused = false
+      if (state.event) state.event = null
+      tickHour(state)
+      const corp = state.bots.find((bot) => bot.corporation)!
+      peak = Math.max(peak, corp.projects.length)
+    }
+    assert.ok(peak >= 3, `корпорация должна вести хотя бы 3 проекта, пик ${peak}`)
   })
 })

@@ -218,6 +218,9 @@ export async function loadGame(file: string): Promise<GameState | null> {
     state.event ??= null
     state.eventsFired ??= []
     state.seasonPriceBonus ??= 0
+    state.seasonDeadlineBonus ??= 0
+    state.seasonWageBonus ??= 0
+    state.corpFinalChoice ??= null
     state.paused = true
     return state
   } catch {

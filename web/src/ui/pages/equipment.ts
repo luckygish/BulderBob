@@ -6,7 +6,7 @@ import type { ViewContext } from '../types'
 
 export function renderEquipment(ctx: ViewContext): string {
   const { state } = ctx
-  const saleRate = state.research.dealer_network?.status === 'done' ? 0.8 : 0.7
+  const saleRate = state.research.dealer_network?.status === 'done' ? 0.85 : 0.7
   return `${pageHeading('Активы компании', 'Техника и обеспечение', 'Формируйте парк под несколько объектов: каждая единица назначается отдельно.', badge(`${state.equipment.length} ед. техники`, 'info'))}
     <div class="notice notice-info">${icon('clock')}<div><strong>Аренда расходуется только на объекте</strong><span>Простаивающая техника не теряет оплаченные часы. Своя и лизинговая техника требует обслуживания 0.1% стоимости в день.</span></div></div>
     <section class="equipment-grid">${EQUIPMENT.map((item) => {
