@@ -28,7 +28,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   { id: 'sell_machine', title: 'Продайте технику', description: 'Собственную технику можно продать за 70% исходной цены.', route: 'equipment', reward: 0, done: (state) => state.equipmentSold > 0 },
   { id: 'special_project', title: 'Сдайте особый проект', description: 'Особые заказы ограничены по времени, но дают высокую награду и репутацию.', route: 'jobs', reward: 0, done: (state) => state.completed.some((project) => project.job.special) },
   { id: 'two_crews', title: 'Сформируйте две бригады', description: 'Исследуйте «Профстандарты» и заполните обе бригады.', route: 'hr', reward: 0, done: (state) => maxCrews(state) === 2 && state.crews.every((crew) => crew.workers.length > 0) },
-  { id: 'capital_5m', title: 'Накопите 5 000 000 ₽ капитала', description: 'Реинвестируйте прибыль в технику, технологии и запас материалов.', route: 'overview', reward: 2, done: (state) => netWorth(state) >= 5_000_000 },
+  { id: 'capital_5m', title: 'Накопите 5 000 000 ₽ капитала', description: 'Реинвестируйте прибыль в технику, технологии и запас материалов.', route: 'overview', reward: 3, done: (state) => netWorth(state) >= 5_000_000 },
 ]
 
 export function nextTutorialStep(state: GameState): TutorialStep | null {

@@ -16,10 +16,10 @@ function freshState(): GameState {
 }
 
 describe('прогресс: награды за обучение', () => {
-  it('репутацию дают только шаги 1, 5 и последний — по +2', () => {
+  it('репутацию дают только шаги 1 и 5 — по +2, последний — +3', () => {
     assert.equal(TUTORIAL_STEPS.length, 18)
     for (const [index, step] of TUTORIAL_STEPS.entries()) {
-      const expected = index === 0 || index === 4 || index === TUTORIAL_STEPS.length - 1 ? 2 : 0
+      const expected = index === TUTORIAL_STEPS.length - 1 ? 3 : index === 0 || index === 4 ? 2 : 0
       assert.equal(step.reward, expected, `шаг ${index + 1} («${step.title}»): награда`)
     }
   })
