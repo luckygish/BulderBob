@@ -17,7 +17,7 @@ export function renderHr(ctx: ViewContext): string {
   const hourly = crewHourly(crew.workers)
   return `${pageHeading('Люди и эффективность', 'Кадры', 'Собирайте бригаду не по ставке, а по стоимости эффективного часа.', badge(`${state.candidates.length} кандидатов`, 'info'))}
     <div class="hr-layout">
-      <section class="card"><div class="card-header"><div><div class="eyebrow">Рынок труда</div><h2>Доступные специалисты</h2></div><span class="muted">До 2 навыков · обновление ежедневно</span></div><div class="candidate-list">${state.candidates.map((worker) => {
+      <section class="card"><div class="card-header"><div><div class="eyebrow">Рынок труда</div><h2>Доступные специалисты</h2></div><span class="muted">До 2 навыков · обновление каждые 3 дня</span></div><div class="candidate-list">${state.candidates.map((worker) => {
         const def = WORKER_TYPES[worker.type]
         return `<article class="candidate-card"><div class="worker-avatar">${worker.name.slice(0, 1)}</div><div class="candidate-main"><div class="candidate-name"><h3>${worker.name}</h3>${badge(def.name, worker.type === 'foreman' ? 'warning' : 'neutral')}</div><div class="skill-list">${skills(worker)}</div><div class="candidate-meta"><span>Эффективность <strong>${def.efficiency.toFixed(1)}</strong></span><span>Ставка <strong>${money(worker.rate)}/ч</strong></span></div></div><button class="btn btn-small btn-secondary" data-action="hire" data-id="${worker.id}" ${crew.workers.length >= 3 ? 'disabled' : ''}>${icon('plus')} В бригаду №${crewId + 1}</button></article>`
       }).join('')}</div></section>

@@ -1,6 +1,6 @@
 import { BALANCE } from './balance'
 import { MATERIALS, PROVISIONS, buildingById, materialById, techById } from './catalog'
-import { addLog, allocateStage, crewHourly, frontPrice, hasStageMaterials, inventoryQty, isDebtBlocked, isResearched, makeStages, maxCrews, maxProjects, projectLogisticsRate, projectReservedQty, purchaseMaterial, quoteMaterial, requiredCrews, requiredMaterials, spend, startStage, stockQty } from './engine'
+import { addLog, allocateStage, crewHourly, frontPrice, hasStageMaterials, inventoryQty, isDebtBlocked, isResearched, makeStages, maxCrews, maxProjects, netWorth, projectLogisticsRate, projectReservedQty, purchaseMaterial, quoteMaterial, requiredCrews, requiredMaterials, spend, startStage, stockQty } from './engine'
 import { nextId } from './rng'
 import { seasonLogisticsRate, seasonProvisionRate } from './seasons'
 import type { ActionResult, GameState, MaterialId, Project, ProvisionId, Speed, SupplierId } from './types'
@@ -144,6 +144,8 @@ export function startResearch(state: GameState, id: string): ActionResult {
   if (state.research[id]?.status === 'researching') return { ok: false, message: 'Исследование уже идёт.' }
   if (Object.values(state.research).some((item) => item.status === 'researching')) return { ok: false, message: 'Одновременно доступно одно исследование.' }
   if (tech.requires && !isResearched(state, tech.requires)) return { ok: false, message: `Требуется: ${techById(tech.requires).name}.` }
+  if (tech.requiresReputation && state.reputation < tech.requiresReputation) return { ok: false, message: `Требуется репутация ${tech.requiresReputation}.` }
+  if (tech.requiresCapital && netWorth(state) < tech.requiresCapital) return { ok: false, message: `Требуется капитал ${tech.requiresCapital.toLocaleString('ru-RU')} ₽.` }
   if (state.money < tech.requiresMoney) return { ok: false, message: `Требуется капитал ${tech.requiresMoney.toLocaleString('ru-RU')} ₽.` }
   if (!spend(state, tech.cost)) return { ok: false, message: 'Недостаточно денег.' }
   state.research[id] = { status: 'researching', progress: 0 }

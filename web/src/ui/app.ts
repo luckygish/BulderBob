@@ -482,8 +482,8 @@ export class App {
     const tutorial = applyTutorialProgress(this.state!)
     this.save()
     this.render()
-    this.notify(result.message, result.ok ? 'success' : 'error')
-    if (tutorial) this.notify(`Шаг выполнен: ${tutorial.title} · +${tutorial.reward} репутации`, 'success')
+this.notify(result.message, result.ok ? 'success' : 'error')
+    if (tutorial) this.notify(tutorial.reward > 0 ? `Шаг выполнен: ${tutorial.title} · +${tutorial.reward} репутации` : `Шаг выполнен: ${tutorial.title}`, 'success')
   }
 
   private commit(result?: ActionResult): void {
@@ -492,7 +492,7 @@ export class App {
     this.render()
     this.schedule()
     if (result) this.notify(result.message, result.ok ? 'success' : 'error')
-    if (tutorial) this.notify(`Шаг выполнен: ${tutorial.title} · +${tutorial.reward} репутации`, 'success')
+    if (tutorial) this.notify(tutorial.reward > 0 ? `Шаг выполнен: ${tutorial.title} · +${tutorial.reward} репутации` : `Шаг выполнен: ${tutorial.title}`, 'success')
   }
 
   private save(): void {

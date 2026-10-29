@@ -3,7 +3,7 @@ import { BUILDINGS, CLIENTS, MATERIALS, PROVISIONS, SKILLS, SUPPLIERS, WORKER_NA
 import { EVENTS } from './events'
 import { nextId, pick, random, randomInt } from './rng'
 import { currentSeason, seasonFoundationManHours, seasonMaintenanceRate, seasonMaterialPriceRate, seasonNightWageMultiplier, seasonWageRate, workDayEnd } from './seasons'
-import type { ActionResult, Bot, EquipmentAsset, EquipmentId, GameState, InventoryBatch, Job, Loan, MaterialId, Project, Quote, SkillId, StageState, SupplierId, Worker, WorkerType } from './types'
+import type { ActionResult, Bot, BotProject, EquipmentAsset, EquipmentId, GameState, InventoryBatch, Job, Loan, MaterialId, Project, Quote, SkillId, StageState, SupplierId, Worker, WorkerType } from './types'
 
 export function createNewGame(seed = Date.now()): GameState {
   const inventory = Object.fromEntries(MATERIALS.map((m) => [m.id, []])) as unknown as GameState['inventory']
@@ -43,13 +43,15 @@ export function createNewGame(seed = Date.now()): GameState {
     createBot(state, 'ДомМастер', 'moderate'),
     createBot(state, 'АтлантСтрой', 'conservative'),
   ]
+  const initialCandidates = BALANCE.minCandidates + state.bots.reduce((sum, bot) => sum + bot.crewTarget, 0)
+  if (state.candidates.length < initialCandidates) generateWorkers(state, initialCandidates - state.candidates.length)
   recordFinanceSnapshot(state)
   addLog(state, 'Компания открыта. Первый заказ уже ждёт на доске.', 'success')
   return state
 }
 
 function createBot(state: GameState, name: string, strategy: Bot['strategy']): Bot {
-  return { id: nextId(state, 'bot'), name, strategy, money: 2_000_000, totalProfit: 0, jobsDone: 0, state: 'idle', cooldown: 0, crew: [], project: null, loan: null }
+  return { id: nextId(state, 'bot'), name, strategy, money: 2_000_000, totalProfit: 0, jobsDone: 0, state: 'idle', cooldown: 0, crew: [], crewTarget: BALANCE.botCrewSeason0, projects: [], loan: null }
 }
 
 export function makeStages(building: Job['building']): StageState[] {
@@ -57,7 +59,9 @@ export function makeStages(building: Job['building']): StageState[] {
 }
 
 export function createJob(state: GameState, forcedBuilding?: Job['building']): Job {
-  const available = forcedBuilding ? [buildingById(forcedBuilding)] : BUILDINGS.filter((b) => !b.special && b.minReputation <= state.reputation)
+  const available = forcedBuilding
+    ? [buildingById(forcedBuilding)]
+    : BUILDINGS.filter((b) => !b.special && b.minReputation <= state.reputation && (!b.requiredLicense || isLicenseUnlocked(state, b.requiredLicense)))
   const def = pick(state, available)
   const manHours = def.stages.reduce((sum, stage) => sum + stage.manHours, 0)
   const duration = 4 + Math.ceil(manHours / 35) + randomInt(state, 0, def.special ? 5 : 3)
@@ -113,11 +117,12 @@ export function isResearched(state: GameState, id: string): boolean {
   return state.research[id]?.status === 'done'
 }
 
+export function isLicenseUnlocked(state: GameState, license: 'city' | 'region'): boolean {
+  return isResearched(state, license === 'city' ? 'city_license' : 'region_license')
+}
+
 export function maxProjects(state: GameState): number {
-  if (isResearched(state, 'planning_3')) return 4
-  if (isResearched(state, 'planning_2')) return 3
-  if (isResearched(state, 'planning_1')) return 2
-  return 1
+  return isResearched(state, 'planning_1') ? 2 : 1
 }
 
 export function maxCrews(state: GameState): number {
@@ -252,7 +257,19 @@ export function purchaseMaterial(state: GameState, material: MaterialId, quantit
   const actualFee = Math.round(quote.fee * feeMultiplier)
   if (quantity <= 0 || quote.qty !== quantity) return { ok: false, message: 'На базе недостаточно материала.' }
   if (!spend(state, quote.cost + actualFee)) return { ok: false, message: 'Недостаточно денег для закупки и доставки.' }
+  const stockBefore = quote.available
   deductLots(state, material, supplier, quantity)
+  const share = stockBefore > 0 ? quantity / stockBefore : 0
+  const bump = Math.max(0, share - 0.25)
+  if (bump > 0) {
+    const base = materialById(material).basePrice
+    const cap = Math.round(base * BALANCE.priceCap)
+    for (const lot of state.suppliers[supplier][material]) lot.price = Math.min(cap, Math.round(lot.price * (1 + BALANCE.priceSensitivity * bump)))
+    if (supplier === 'north') {
+      state.priceHistory[material].push(frontPrice(state, material, supplier))
+      if (state.priceHistory[material].length > 30) state.priceHistory[material].shift()
+    }
+  }
   state.demand[supplier][material] += quantity
   if (!state.usedSuppliers.includes(supplier)) state.usedSuppliers.push(supplier)
   const unitCost = Math.round(quote.cost / quantity)
@@ -526,7 +543,7 @@ function processSupply(state: GameState): void {
       const ratio = state.demand[supplier][material.id] / expected
       const priceMultiplier = Math.max(BALANCE.priceFloor, Math.min(BALANCE.priceCap, 1 + BALANCE.priceSensitivity * (ratio - 1)))
       const price = Math.max(1, Math.round(material.basePrice * priceMultiplier))
-      const quantity = Math.max(material.stockMin, Math.round(expected * Math.max(0.25, Math.min(4, ratio))))
+      const quantity = Math.min(material.stockMax, Math.max(material.stockMin, Math.round(expected * Math.max(0.25, Math.min(4, ratio)))))
       state.suppliers[supplier][material.id].push({ qty: quantity, initialQty: quantity, price, arrivedDay: state.day })
       state.demand[supplier][material.id] = 0
       for (const lot of state.suppliers[supplier][material.id]) {
@@ -542,35 +559,106 @@ function processSupply(state: GameState): void {
   }
 }
 
+function botSupplierQuote(state: GameState, material: MaterialId, quantity: number): { supplier: SupplierId; qty: number; unitTotal: number } {
+  if (quantity <= 0) return { supplier: 'south', qty: 0, unitTotal: 0 }
+  const suppliers: SupplierId[] = ['north', 'south']
+  let best: SupplierId = 'south'
+  let bestQty = 0
+  let bestUnit = Number.POSITIVE_INFINITY
+  for (const supplier of suppliers) {
+    const available = stockQty(state, material, supplier)
+    if (available <= 0) continue
+    const qty = Math.min(quantity, available)
+    const quote = quoteMaterial(state, material, qty, supplier)
+    const unit = quote.qty > 0 ? quote.total / quote.qty : Number.POSITIVE_INFINITY
+    if (unit < bestUnit || (unit === bestUnit && supplier === 'south')) {
+      bestUnit = unit
+      bestQty = qty
+      best = supplier
+    }
+  }
+  return { supplier: best, qty: bestQty, unitTotal: bestUnit }
+}
+
 function botEstimate(state: GameState, job: Job): { materials: number; labor: number; margin: number; hours: number } {
   const def = buildingById(job.building)
   let materials = 0
   let hours = 0
   for (const stage of def.stages) {
     hours += stage.manHours
-    for (const [material, qty] of Object.entries(stage.materials) as [MaterialId, number][]) materials += frontPrice(state, material) * qty
+    for (const [material, qty] of Object.entries(stage.materials) as [MaterialId, number][]) {
+      if (!qty) continue
+      const best = botSupplierQuote(state, material, qty)
+      materials += best.unitTotal * qty
+    }
   }
   const labor = hours * BALANCE.botWageEstimate
   return { materials, labor, margin: job.budget - materials - labor, hours }
 }
 
 function botBuy(state: GameState, bot: Bot, material: MaterialId, quantity: number): { qty: number; cost: number } {
-  const qty = Math.min(quantity, stockQty(state, material, 'north'))
+  const best = botSupplierQuote(state, material, quantity)
+  const qty = Math.min(best.qty, Math.floor(bot.money / Math.max(1, best.unitTotal)))
   if (qty <= 0) return { qty: 0, cost: 0 }
-  const quote = quoteMaterial(state, material, qty, 'north')
-  const affordable = Math.min(qty, Math.floor(bot.money / Math.max(1, quote.cost / qty)))
-  if (affordable <= 0) return { qty: 0, cost: 0 }
-  const actual = quoteMaterial(state, material, affordable, 'north')
-  deductLots(state, material, 'north', affordable)
-  state.demand.north[material] += affordable
-  bot.money -= actual.cost
-  return { qty: affordable, cost: actual.cost }
+  const actual = quoteMaterial(state, material, qty, best.supplier)
+  deductLots(state, material, best.supplier, qty)
+  state.demand[best.supplier][material] += qty
+  bot.money -= actual.total
+  return { qty, cost: actual.total }
+}
+
+export function botProjectLimit(state: GameState): number {
+  return state.seasonIndex >= 2 || isResearched(state, 'planning_1') ? 2 : 1
+}
+
+function botPickJob(state: GameState, bot: Bot): void {
+  if (state.seasonIndex >= 1 && bot.crewTarget < BALANCE.botCrewMin) bot.crewTarget = randomInt(state, BALANCE.botCrewMin, BALANCE.botCrewMax)
+  const options = state.jobs.filter((job) => !job.special).map((job) => ({ job, estimate: botEstimate(state, job) })).filter((item) => item.estimate.margin > item.job.budget * 0.1 && bot.money >= item.estimate.materials * 0.7)
+  options.sort((a, b) => {
+    const score = (item: typeof a) => item.estimate.margin / item.job.budget + (bot.strategy === 'aggressive' ? item.job.budget / 4_000_000 : 0) - (bot.strategy === 'conservative' ? item.estimate.hours / 500 : 0)
+    return score(b) - score(a)
+  })
+  const selected = options[0]
+  if (!selected) return
+  state.jobs = state.jobs.filter((job) => job.id !== selected.job.id)
+  bot.projects.push({ job: selected.job, stages: makeStages(selected.job.building), currentStage: 0, materialSpent: 0, wagesPaid: 0, rentalPaid: 0, progress: 0 })
+  bot.state = 'working'
+  if (isResearched(state, 'factoring')) {
+    const advance = Math.round(selected.job.budget * BALANCE.factoringAdvance)
+    const fee = Math.round(selected.job.budget * BALANCE.factoringFee)
+    bot.money += advance - fee
+  }
+  addLog(state, `${bot.name} взял заказ «${buildingById(selected.job.building).name}».`)
+}
+
+function botStageReadyForBuild(project: BotProject, def: ReturnType<typeof buildingById>): boolean {
+  if (project.currentStage >= def.stages.length) return false
+  const defStage = def.stages[project.currentStage]
+  const stage = project.stages[project.currentStage]
+  return Object.entries(defStage.materials).every(([material, qty]) => (stage.stock[material as MaterialId]?.qty ?? 0) >= (qty ?? 0))
+}
+
+function deliverBotProject(state: GameState, bot: Bot, project: BotProject): void {
+  const lateDays = Math.max(0, state.day - project.job.deadline)
+  const penalty = Math.round(project.job.budget * Math.min(BALANCE.latePenaltyCap, lateDays * BALANCE.latePenaltyPerDay))
+  bot.money += project.job.budget - penalty
+  const profit = project.job.budget - project.materialSpent - project.wagesPaid - project.rentalPaid - penalty
+  bot.totalProfit += profit
+  bot.jobsDone += 1
+  bot.projects = bot.projects.filter((item) => item !== project)
+  addLog(state, `${bot.name} сдал объект «${buildingById(project.job.building).name}». Прибыль ${profit.toLocaleString('ru-RU')} ₽.`, 'info')
+  if (bot.projects.length === 0) {
+    state.candidates.push(...bot.crew)
+    bot.crew = []
+    bot.state = 'cooldown'
+    bot.cooldown = randomInt(state, 2, 4)
+  }
 }
 
 function tickBot(state: GameState, bot: Bot): void {
   if (bot.state === 'cooldown') {
     bot.cooldown -= 1
-    if (bot.cooldown <= 0) bot.state = 'idle'
+    if (bot.cooldown <= 0) bot.state = bot.projects.length > 0 ? 'working' : 'idle'
     return
   }
   if (bot.loan) {
@@ -579,22 +667,11 @@ function tickBot(state: GameState, bot: Bot): void {
     bot.loan.remaining -= payment
     if (bot.loan.remaining <= 0) bot.loan = null
   }
-  if (bot.state === 'idle') {
-    const options = state.jobs.filter((job) => !job.special).map((job) => ({ job, estimate: botEstimate(state, job) })).filter((item) => item.estimate.margin > item.job.budget * 0.1 && bot.money >= item.estimate.materials * 0.7)
-    options.sort((a, b) => {
-      const score = (item: typeof a) => item.estimate.margin / item.job.budget + (bot.strategy === 'aggressive' ? item.job.budget / 4_000_000 : 0) - (bot.strategy === 'conservative' ? item.estimate.hours / 500 : 0)
-      return score(b) - score(a)
-    })
-    const selected = options[0]
-    if (!selected) return
-    state.jobs = state.jobs.filter((job) => job.id !== selected.job.id)
-    bot.project = { job: selected.job, stages: makeStages(selected.job.building), currentStage: 0, materialSpent: 0, wagesPaid: 0, rentalPaid: 0, progress: 0 }
-    bot.state = 'working'
-    addLog(state, `${bot.name} взял заказ «${buildingById(selected.job.building).name}».`)
-  }
-  const project = bot.project
-  if (!project) return
-  while (bot.crew.length < 2 && state.candidates.length > 0) {
+  if (bot.projects.length < botProjectLimit(state)) botPickJob(state, bot)
+  if (bot.projects.length < botProjectLimit(state)) botPickJob(state, bot)
+  if (bot.projects.length === 0) return
+
+  while (bot.crew.length < bot.crewTarget && state.candidates.length > 0) {
     let index = 0
     if (bot.strategy === 'aggressive') index = state.candidates.findIndex((worker) => worker.type !== 'handyman')
     if (bot.strategy === 'conservative') index = state.candidates.findIndex((worker) => worker.type === 'handyman')
@@ -606,56 +683,65 @@ function tickBot(state: GameState, bot: Bot): void {
     bot.loan = { amount: option.amount, rate: option.rate, total: Math.round(option.amount * (1 + option.rate)), daily: Math.round(option.amount * (1 + option.rate) / BALANCE.loanDays), remaining: Math.round(option.amount * (1 + option.rate)) }
     bot.money += option.amount
   }
-  const def = buildingById(project.job.building)
-  for (let stageIndex = project.currentStage; stageIndex <= Math.min(project.currentStage + 1, def.stages.length - 1); stageIndex += 1) {
-    for (const [material, required] of Object.entries(def.stages[stageIndex].materials) as [MaterialId, number][]) {
-      const stage = project.stages[stageIndex]
-      const have = stage.stock[material]?.qty ?? 0
-      const bought = botBuy(state, bot, material, required - have)
-      if (bought.qty > 0) {
-        stage.stock[material] = { qty: have + bought.qty, unitCost: 0 }
-        project.materialSpent += bought.cost
+
+  for (const project of bot.projects) {
+    const def = buildingById(project.job.building)
+    for (let stageIndex = project.currentStage; stageIndex <= Math.min(project.currentStage + 1, def.stages.length - 1); stageIndex += 1) {
+      for (const [material, required] of Object.entries(def.stages[stageIndex].materials) as [MaterialId, number][]) {
+        const stage = project.stages[stageIndex]
+        const have = stage.stock[material]?.qty ?? 0
+        const bought = botBuy(state, bot, material, required - have)
+        if (bought.qty > 0) {
+          stage.stock[material] = { qty: have + bought.qty, unitCost: 0 }
+          project.materialSpent += bought.cost
+        }
       }
     }
   }
-  const stage = project.stages[project.currentStage]
-  const stageReady = (Object.entries(def.stages[project.currentStage].materials) as [MaterialId, number][]).every(([material, qty]) => (stage.stock[material]?.qty ?? 0) >= qty)
-  const dailyWages = crewHourly(bot.crew) * BALANCE.botWorkHours
-  if (!stageReady || bot.crew.length === 0 || bot.money < dailyWages + BALANCE.botDailyRental) return
-  stage.status = 'in_progress'
+
+  const extraHours = isResearched(state, 'automation') ? 10 : 0
+  const nightMult = isResearched(state, 'night_coordinator') ? 1.35 : 1.5
+  const dailyWages = crewHourly(bot.crew) * (10 + Math.round(extraHours * nightMult))
+  const workHours = 10 + extraHours
+  const workingSet = bot.projects.filter((project) => botStageReadyForBuild(project, buildingById(project.job.building)))
+  if (workingSet.length === 0 || bot.crew.length === 0 || bot.money < dailyWages + BALANCE.botDailyRental) return
   bot.money -= dailyWages + BALANCE.botDailyRental
-  project.wagesPaid += dailyWages
-  project.rentalPaid += BALANCE.botDailyRental
-  let work = crewEfficiency(bot.crew) * BALANCE.botWorkHours
-  while (work > 0 && project.currentStage < project.stages.length) {
-    const current = project.stages[project.currentStage]
-    const currentDef = def.stages[project.currentStage]
-    const ready = (Object.entries(currentDef.materials) as [MaterialId, number][]).every(([material, qty]) => (current.stock[material]?.qty ?? 0) >= qty)
-    if (!ready) break
-    const needed = currentDef.manHours * (1 - current.progress)
-    const used = Math.min(work, needed)
-    current.progress += used / currentDef.manHours
-    work -= used
-    if (current.progress >= 0.999999) {
-      current.status = 'completed'
-      project.currentStage += 1
-      if (project.currentStage < project.stages.length) project.stages[project.currentStage].status = 'in_progress'
-    } else break
+  let work = crewEfficiency(bot.crew, workerBonus(state)) * workHours
+  const usedWork: { project: BotProject; hours: number }[] = []
+  for (const project of workingSet) {
+    if (work <= 0) break
+    const def = buildingById(project.job.building)
+    const startWork = work
+    while (work > 0 && project.currentStage < project.stages.length) {
+      const current = project.stages[project.currentStage]
+      const currentDef = def.stages[project.currentStage]
+      const ready = Object.entries(currentDef.materials).every(([material, qty]) => (current.stock[material as MaterialId]?.qty ?? 0) >= (qty ?? 0))
+      if (!ready) break
+      const needed = currentDef.manHours * (1 - current.progress)
+      const used = Math.min(work, needed)
+      current.progress += used / currentDef.manHours
+      work -= used
+      if (current.progress >= 0.999999) {
+        current.status = 'completed'
+        project.currentStage += 1
+        if (project.currentStage < project.stages.length) project.stages[project.currentStage].status = 'in_progress'
+      } else break
+    }
+    const consumed = startWork - work
+    if (consumed > 0) usedWork.push({ project, hours: consumed })
+    project.progress = project.currentStage / project.stages.length + (project.currentStage < project.stages.length ? project.stages[project.currentStage].progress / project.stages.length : 0)
   }
-  project.progress = project.currentStage / project.stages.length + (project.currentStage < project.stages.length ? project.stages[project.currentStage].progress / project.stages.length : 0)
-  if (project.currentStage < project.stages.length) return
-  const lateDays = Math.max(0, state.day - project.job.deadline)
-  const penalty = Math.round(project.job.budget * Math.min(BALANCE.latePenaltyCap, lateDays * BALANCE.latePenaltyPerDay))
-  bot.money += project.job.budget - penalty
-  const profit = project.job.budget - project.materialSpent - project.wagesPaid - project.rentalPaid - penalty
-  bot.totalProfit += profit
-  bot.jobsDone += 1
-  state.candidates.push(...bot.crew)
-  bot.crew = []
-  bot.project = null
-  bot.state = 'cooldown'
-  bot.cooldown = randomInt(state, 2, 4)
-  addLog(state, `${bot.name} сдал объект. Прибыль ${profit.toLocaleString('ru-RU')} ₽.`, 'info')
+  const totalUsed = usedWork.reduce((sum, item) => sum + item.hours, 0)
+  if (totalUsed > 0) {
+    for (const { project, hours } of usedWork) {
+      const share = hours / totalUsed
+      project.wagesPaid += Math.round(dailyWages * share)
+      project.rentalPaid += Math.round(BALANCE.botDailyRental * share)
+    }
+  }
+  for (const project of [...bot.projects]) {
+    if (project.currentStage >= project.stages.length) deliverBotProject(state, bot, project)
+  }
 }
 
 function dailyTick(state: GameState): void {
@@ -665,6 +751,8 @@ function dailyTick(state: GameState): void {
   for (let i = 0; i < state.bots.length; i += 1) tickBot(state, state.bots[(i + offset) % state.bots.length])
   if (state.day % BALANCE.restockDays === 0) {
     processSupply(state)
+    const neededCandidates = BALANCE.minCandidates + state.bots.reduce((sum, bot) => sum + bot.crewTarget, 0)
+    if (state.candidates.length < neededCandidates) generateWorkers(state, neededCandidates - state.candidates.length)
     if (!state.jobs.some((job) => job.special) && state.jobs.length < 5 && random(state) < BALANCE.specialJobChance) {
       const special = pick(state, BUILDINGS.filter((building) => building.special))
       state.jobs.push(createJob(state, special.id))
@@ -683,7 +771,6 @@ function dailyTick(state: GameState): void {
   const additions = randomInt(state, 1, 2)
   for (let i = 0; i < additions && state.jobs.length < 5; i += 1) state.jobs.push(createJob(state))
   while (state.jobs.length < 3) state.jobs.push(createJob(state, state.reputation < 40 ? 'reconstruction' : undefined))
-  if (state.candidates.length < BALANCE.minCandidates) generateWorkers(state, BALANCE.minCandidates - state.candidates.length)
   const eventDef = EVENTS.find((e) => e.season === state.seasonIndex && e.day === state.day && !(state.eventsFired ?? []).includes(e.id))
   if (eventDef) {
     state.event = eventDef.id
@@ -701,6 +788,9 @@ function transitionSeason(state: GameState): void {
   const final = state.seasonIndex >= 9
   state.reputation = Math.max(0, Math.min(100, state.reputation + (success ? 5 : -15)))
   if (!final) state.seasonIndex += 1
+  for (const bot of state.bots) {
+    if (state.seasonIndex >= 1) bot.crewTarget = randomInt(state, BALANCE.botCrewMin, BALANCE.botCrewMax)
+  }
   for (const project of state.projects) {
     project.job.deadline -= BALANCE.seasonDays
     project.job.createdDay -= BALANCE.seasonDays
@@ -713,10 +803,10 @@ function transitionSeason(state: GameState): void {
     job.expiresDay -= BALANCE.seasonDays
   }
   for (const bot of state.bots) {
-    if (bot.project) {
-      bot.project.job.deadline -= BALANCE.seasonDays
-      bot.project.job.createdDay -= BALANCE.seasonDays
-      bot.project.job.expiresDay -= BALANCE.seasonDays
+    for (const project of bot.projects) {
+      project.job.deadline -= BALANCE.seasonDays
+      project.job.createdDay -= BALANCE.seasonDays
+      project.job.expiresDay -= BALANCE.seasonDays
     }
   }
   state.day = 1

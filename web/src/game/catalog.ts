@@ -1,30 +1,32 @@
 import type { BuildingDef, EquipmentDef, EquipmentId, MaterialDef, ProvisionDef, SkillId, StageDef, SupplierId, TechDef, WorkerDef, WorkerType } from './types'
 
 export const MATERIALS: MaterialDef[] = [
-  { id: 'concrete', name: 'Бетон', short: 'БТ', unit: 'м³', basePrice: 4_500, stockMin: 100, stockMax: 1_500, dailyDemand: 150 },
-  { id: 'rebar', name: 'Арматура', short: 'АР', unit: 'т', basePrice: 650, stockMin: 50, stockMax: 2_000, dailyDemand: 80 },
-  { id: 'lumber', name: 'Доска', short: 'ДС', unit: 'м³', basePrice: 1_200, stockMin: 200, stockMax: 4_500, dailyDemand: 40 },
-  { id: 'insulation', name: 'Утеплитель', short: 'УТ', unit: 'м²', basePrice: 800, stockMin: 50, stockMax: 1_500, dailyDemand: 50 },
-  { id: 'metal_roof', name: 'Металлочерепица', short: 'МЧ', unit: 'м²', basePrice: 950, stockMin: 50, stockMax: 2_000, dailyDemand: 150 },
-  { id: 'brick', name: 'Кирпич', short: 'КР', unit: 'уп.', basePrice: 65, stockMin: 200, stockMax: 4_000, dailyDemand: 600 },
-  { id: 'gas_block', name: 'Газоблок', short: 'ГБ', unit: 'м³', basePrice: 85, stockMin: 100, stockMax: 4_000, dailyDemand: 50 },
+  { id: 'concrete', name: 'Бетон', short: 'БТ', unit: 'м³', basePrice: 4_500, stockMin: 100, stockMax: 1_275, dailyDemand: 150 },
+  { id: 'rebar', name: 'Арматура', short: 'АР', unit: 'т', basePrice: 650, stockMin: 50, stockMax: 1_700, dailyDemand: 80 },
+  { id: 'lumber', name: 'Доска', short: 'ДС', unit: 'м³', basePrice: 1_200, stockMin: 200, stockMax: 3_825, dailyDemand: 40 },
+  { id: 'insulation', name: 'Утеплитель', short: 'УТ', unit: 'м²', basePrice: 800, stockMin: 50, stockMax: 1_275, dailyDemand: 50 },
+  { id: 'metal_roof', name: 'Металлочерепица', short: 'МЧ', unit: 'м²', basePrice: 950, stockMin: 50, stockMax: 1_700, dailyDemand: 150 },
+  { id: 'brick', name: 'Кирпич', short: 'КР', unit: 'уп.', basePrice: 65, stockMin: 200, stockMax: 3_400, dailyDemand: 600 },
+  { id: 'gas_block', name: 'Газоблок', short: 'ГБ', unit: 'м³', basePrice: 85, stockMin: 100, stockMax: 3_400, dailyDemand: 50 },
 ]
 
+const scaleHours = (hours: number): number => Math.round(hours * 115 / 100)
+
 const foundation = (concrete: number, rebar: number, manHours: number): StageDef => ({
-  id: 'foundation', name: 'Фундамент', materials: { concrete, rebar }, manHours,
+  id: 'foundation', name: 'Фундамент', materials: { concrete, rebar }, manHours: scaleHours(manHours),
   requiredEquipment: ['mixer', 'tractor', 'excavator'],
   equipmentBonus: { tractor: 0.3, excavator: 0.45 },
 })
 const walls = (name: string, materials: StageDef['materials'], manHours: number, requiredEquipment?: EquipmentId[]): StageDef => ({
-  id: 'walls', name, materials, manHours, requiredEquipment,
+  id: 'walls', name, materials, manHours: scaleHours(manHours), requiredEquipment,
   equipmentBonus: { manipulator: 0.15, crane: 0.1 },
 })
 const roof = (metalRoof: number, lumber: number, insulation: number, manHours: number, requiredEquipment?: EquipmentId[]): StageDef => ({
-  id: 'roof', name: 'Кровля', materials: { metal_roof: metalRoof, lumber, insulation }, manHours, requiredEquipment,
+  id: 'roof', name: 'Кровля', materials: { metal_roof: metalRoof, lumber, insulation }, manHours: scaleHours(manHours), requiredEquipment,
   equipmentBonus: { crane: 0.2 },
 })
 const finish = (materials: StageDef['materials'], manHours: number): StageDef => ({
-  id: 'finish', name: 'Отделка', materials, manHours,
+  id: 'finish', name: 'Отделка', materials, manHours: scaleHours(manHours),
   equipmentBonus: { manipulator: 0.1 },
 })
 
@@ -83,11 +85,68 @@ export const BUILDINGS: BuildingDef[] = [
       finish({ insulation: 120, lumber: 80 }, 70),
     ],
   },
+  {
+    id: 'park', name: 'Парк и сквер', short: 'ПР', budgetMin: 1_800_000, budgetMax: 2_800_000, minReputation: 70, requiredCrews: 1, reputationReward: 5, requiredLicense: 'city',
+    stages: [
+      foundation(50, 15, 35),
+      walls('Мощение и дорожки', { concrete: 80, brick: 500 }, 65, ['manipulator']),
+      walls('Малые архитектурные формы', { lumber: 250, insulation: 20 }, 60),
+      finish({ lumber: 120, insulation: 20 }, 45),
+    ],
+  },
+  {
+    id: 'kindergarten', name: 'Детский сад', short: 'ДС', budgetMin: 6_000_000, budgetMax: 8_500_000, minReputation: 70, requiredCrews: 2, reputationReward: 6, requiredLicense: 'city',
+    stages: [
+      foundation(120, 45, 60),
+      walls('Кладка стен', { gas_block: 700, concrete: 60 }, 95, ['manipulator']),
+      roof(200, 60, 50, 60, ['crane']),
+      finish({ insulation: 80, lumber: 60 }, 80),
+    ],
+  },
+  {
+    id: 'hospital', name: 'Больница', short: 'БЛ', budgetMin: 12_000_000, budgetMax: 18_000_000, minReputation: 70, requiredCrews: 2, reputationReward: 9, requiredLicense: 'city',
+    stages: [
+      foundation(260, 110, 90),
+      walls('Монолитный каркас', { concrete: 220, rebar: 200 }, 170, ['crane']),
+      walls('Перекрытия и кровля', { concrete: 160, rebar: 140, metal_roof: 320, lumber: 90 }, 150, ['crane']),
+      walls('Фасад и инженерия', { insulation: 240, lumber: 150 }, 130, ['manipulator']),
+      finish({ insulation: 160, lumber: 120 }, 110),
+    ],
+  },
+  {
+    id: 'roads', name: 'Дороги', short: 'ДР', budgetMin: 10_000_000, budgetMax: 15_000_000, minReputation: 80, requiredCrews: 2, reputationReward: 7, requiredLicense: 'region',
+    stages: [
+      foundation(150, 40, 60),
+      walls('Дорожное основание', { concrete: 320, rebar: 180 }, 145, ['excavator', 'tractor']),
+      walls('Укладка покрытия', { concrete: 400, rebar: 120 }, 175, ['excavator', 'mixer']),
+      finish({ brick: 800, concrete: 100 }, 90),
+    ],
+  },
+  {
+    id: 'warehouses', name: 'Торговые склады', short: 'ТС', budgetMin: 14_000_000, budgetMax: 22_000_000, minReputation: 80, requiredCrews: 2, reputationReward: 8, requiredLicense: 'region',
+    stages: [
+      foundation(240, 90, 85),
+      walls('Каркасы корпусов', { rebar: 260, lumber: 500 }, 155, ['crane']),
+      roof(500, 120, 300, 145, ['crane']),
+      walls('Рампы и площадки', { concrete: 200, brick: 600 }, 105, ['excavator', 'manipulator']),
+      finish({ insulation: 200, lumber: 160 }, 115),
+    ],
+  },
+  {
+    id: 'thermal_plant', name: 'ТЭЦ', short: 'ТЦ', budgetMin: 22_000_000, budgetMax: 32_000_000, minReputation: 80, requiredCrews: 2, reputationReward: 10, requiredLicense: 'region',
+    stages: [
+      foundation(360, 150, 120),
+      walls('Монолит и башенные сооружения', { concrete: 320, rebar: 260 }, 205, ['crane']),
+      walls('Технологические этажи', { concrete: 240, rebar: 220, lumber: 300 }, 185, ['crane']),
+      roof(400, 120, 300, 150, ['crane']),
+      finish({ insulation: 260, lumber: 200 }, 135),
+    ],
+  },
 ]
 
 export const SUPPLIERS: Record<SupplierId, { name: string; short: string; description: string; feeRate: number; deliveryDays: number; initialPrice: number; initialStock: number }> = {
   north: { name: 'База Север', short: 'С', description: 'Сегодня · надёжные остатки', feeRate: 0.02, deliveryDays: 0, initialPrice: 1, initialStock: 1 },
-  south: { name: 'База Юг', short: 'Ю', description: 'Завтра · ниже цены', feeRate: 0.035, deliveryDays: 1, initialPrice: 0.94, initialStock: 0.75 },
+  south: { name: 'База Юг', short: 'Ю', description: 'Завтра · −5% к цене', feeRate: 0.035, deliveryDays: 1, initialPrice: 0.95, initialStock: 0.75 },
 }
 
 export const WORKER_TYPES: Record<WorkerType, WorkerDef> = {
@@ -128,8 +187,8 @@ export const PROVISIONS: ProvisionDef[] = [
 export const TECHNOLOGIES: TechDef[] = [
   { id: 'planning_1', name: 'Планирование I', branch: 'Управление', cost: 300_000, days: 2, requires: '', requiresMoney: 0, description: 'До 2 активных объектов.' },
   { id: 'seasonal_planning', name: 'Сезонное планирование', branch: 'Управление', cost: 450_000, days: 3, requires: 'planning_1', requiresMoney: 0, description: 'Сезонные дебаффы снижены на 10%.' },
-  { id: 'planning_2', name: 'Планирование II', branch: 'Управление', cost: 1_500_000, days: 4, requires: 'planning_1', requiresMoney: 0, description: 'До 3 активных объектов.' },
-  { id: 'planning_3', name: 'Планирование III', branch: 'Управление', cost: 2_500_000, days: 7, requires: 'planning_2', requiresMoney: 5_000_000, description: 'До 4 активных объектов.' },
+  { id: 'city_license', name: 'Городская лицензия', branch: 'Управление', cost: 2_000_000, days: 5, requires: 'planning_1', requiresMoney: 0, requiresReputation: 70, requiresCapital: 10_000_000, description: 'Открывает контракты: больница, детский сад, парк.' },
+  { id: 'region_license', name: 'Областная лицензия', branch: 'Управление', cost: 4_000_000, days: 7, requires: 'city_license', requiresMoney: 0, requiresReputation: 80, requiresCapital: 15_000_000, description: 'Открывает контракты: ТЭЦ, торговые склады, дороги.' },
   { id: 'worker_training', name: 'Обучение рабочих', branch: 'Персонал', cost: 200_000, days: 2, requires: '', requiresMoney: 0, description: '+0.2 эффективности каждому работнику.' },
   { id: 'night_coordinator', name: 'Ночной координатор', branch: 'Персонал', cost: 400_000, days: 3, requires: 'worker_training', requiresMoney: 0, description: 'Ночной тариф снижен на 10%.' },
   { id: 'prof_standards', name: 'Профстандарты', branch: 'Персонал', cost: 800_000, days: 4, requires: 'worker_training', requiresMoney: 0, description: '+0.4 эффективности и вторая бригада.' },

@@ -1,7 +1,7 @@
 import { BALANCE } from './balance'
 import { SKILLS } from './catalog'
 import { netWorth } from './engine'
-import type { EquipmentId, GameState, Project, SkillId } from './types'
+import type { Bot, BotProject, EquipmentId, GameState, Project, SkillId } from './types'
 
 export interface SaveMeta {
   file: string
@@ -144,6 +144,7 @@ async function importLegacy(): Promise<void> {
       if (state.version === 1) state = migrateV1(state)
       if (state.version === 2) state = migrateV2(state)
       if (state.version === 3) state = migrateV3(state)
+      if (state.version === 4) state = migrateV4(state)
       await current.write(LEGACY_FILE, JSON.stringify(state))
     }
   } catch {
@@ -212,6 +213,7 @@ export async function loadGame(file: string): Promise<GameState | null> {
     if (state.version === 1) state = migrateV1(state)
     if (state.version === 2) state = migrateV2(state)
     if (state.version === 3) state = migrateV3(state)
+    if (state.version === 4) state = migrateV4(state)
     if (state.version !== BALANCE.version || !Array.isArray(state.projects) || !Array.isArray(state.jobs)) return null
     state.event ??= null
     state.eventsFired ??= []
@@ -260,10 +262,13 @@ function migrateV1(state: GameState): GameState {
   state.projects.forEach(migrateProject)
   state.completed.forEach(migrateProject)
   state.bots.forEach((bot) => {
-    if (bot.project) {
-      bot.project.job.special ||= false
-      bot.project.job.expiresDay ||= bot.project.job.deadline
-    }
+    const legacyBot = bot as Bot & { project?: BotProject }
+    if (!Array.isArray(bot.projects)) bot.projects = legacyBot.project ? [legacyBot.project] : []
+    delete (bot as Partial<Bot> & { project?: BotProject }).project
+    bot.projects.forEach((project) => {
+      project.job.special ||= false
+      project.job.expiresDay ||= project.job.deadline
+    })
   })
   for (const worker of [...state.candidates, ...state.crews.flatMap((crew) => crew.workers), ...state.bots.flatMap((bot) => bot.crew)]) {
     worker.skills = worker.skills.filter((skill): skill is SkillId => skill in SKILLS).slice(0, 2)
@@ -284,12 +289,25 @@ function migrateV2(state: GameState): GameState {
 }
 
 function migrateV3(state: GameState): GameState {
-  state.version = BALANCE.version
+  state.version = 4
   state.companyName ||= 'Ваша компания'
   state.companyAvatar ??= 0
   state.financeHistory ??= []
   state.event ??= null
   state.eventsFired ??= []
   state.seasonPriceBonus ??= 0
+  return state
+}
+
+function migrateV4(state: GameState): GameState {
+  state.version = BALANCE.version
+  for (const bot of state.bots) {
+    const legacy = bot as Bot & { project?: BotProject }
+    if (!Array.isArray(bot.projects)) bot.projects = legacy.project ? [legacy.project] : []
+    delete (bot as Partial<Bot> & { project?: BotProject }).project
+    if (typeof bot.crewTarget !== 'number') bot.crewTarget = 2
+  }
+  delete state.research['planning_2']
+  delete state.research['planning_3']
   return state
 }

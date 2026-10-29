@@ -1,5 +1,5 @@
 export type MaterialId = 'concrete' | 'rebar' | 'lumber' | 'insulation' | 'metal_roof' | 'brick' | 'gas_block'
-export type BuildingId = 'reconstruction' | 'frame_house' | 'brick_house' | 'gas_block_house' | 'hangar' | 'tv_tower' | 'apartments' | 'resort_house'
+export type BuildingId = 'reconstruction' | 'frame_house' | 'brick_house' | 'gas_block_house' | 'hangar' | 'tv_tower' | 'apartments' | 'resort_house' | 'park' | 'kindergarten' | 'hospital' | 'roads' | 'warehouses' | 'thermal_plant'
 export type SupplierId = 'north' | 'south'
 export type WorkerType = 'handyman' | 'specialist' | 'foreman'
 export type SkillId = 'alcohol' | 'tudyaga' | 'owl' | 'thief' | 'thrifty' | 'mentor' | 'logistician' | 'technologist' | 'sluggish' | 'expensive'
@@ -10,11 +10,11 @@ export type Speed = 1 | 2 | 4
 
 export interface MaterialDef { id: MaterialId; name: string; short: string; unit: string; basePrice: number; stockMax: number; stockMin: number; dailyDemand: number }
 export interface StageDef { id: string; name: string; materials: Partial<Record<MaterialId, number>>; manHours: number; requiredEquipment?: EquipmentId[]; equipmentBonus?: Partial<Record<EquipmentId, number>> }
-export interface BuildingDef { id: BuildingId; name: string; short: string; budgetMin: number; budgetMax: number; minReputation: number; stages: StageDef[]; special?: boolean; requiredCrews?: number; reputationReward?: number }
+export interface BuildingDef { id: BuildingId; name: string; short: string; budgetMin: number; budgetMax: number; minReputation: number; stages: StageDef[]; special?: boolean; requiredCrews?: number; reputationReward?: number; requiredLicense?: 'city' | 'region' }
 export interface WorkerDef { name: string; efficiency: number; rateMin: number; rateMax: number; teamBonus: number }
 export interface EquipmentDef { id: EquipmentId; name: string; description: string; price: number; rentPerHour: number; minRentHours: number }
 export interface ProvisionDef { id: ProvisionId; name: string; description: string; price: number }
-export interface TechDef { id: string; name: string; branch: string; cost: number; days: number; requires: string; requiresMoney: number; description: string }
+export interface TechDef { id: string; name: string; branch: string; cost: number; days: number; requires: string; requiresMoney: number; requiresReputation?: number; requiresCapital?: number; description: string }
 
 export interface Job { id: string; client: string; building: BuildingId; budget: number; deadline: number; createdDay: number; special: boolean; expiresDay: number }
 export interface InventoryBatch { qty: number; unitCost: number }
@@ -58,7 +58,7 @@ export interface EquipmentAsset {
 export interface Loan { amount: number; rate: number; total: number; daily: number; remaining: number }
 export interface Research { status: 'researching' | 'done'; progress: number }
 export interface BotProject { job: Job; stages: StageState[]; currentStage: number; materialSpent: number; wagesPaid: number; rentalPaid: number; progress: number }
-export interface Bot { id: string; name: string; strategy: 'aggressive' | 'moderate' | 'conservative'; money: number; totalProfit: number; jobsDone: number; state: 'idle' | 'working' | 'cooldown'; cooldown: number; crew: Worker[]; project: BotProject | null; loan: Loan | null }
+export interface Bot { id: string; name: string; strategy: 'aggressive' | 'moderate' | 'conservative'; money: number; totalProfit: number; jobsDone: number; state: 'idle' | 'working' | 'cooldown'; cooldown: number; crew: Worker[]; crewTarget: number; projects: BotProject[]; loan: Loan | null }
 export interface JournalEntry { id: string; day: number; hour: number; kind: 'info' | 'success' | 'warning' | 'money'; text: string }
 export interface SeasonGoal { capital: number; reputation: number; completed: number }
 export interface SeasonDef {

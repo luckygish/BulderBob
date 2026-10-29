@@ -100,11 +100,11 @@ export function equipmentMaintenance(state: GameState): number {
 
 export const COMPANY_STATUSES = [
   { capital: 0, name: 'ИЖС · Частный подряд' },
-  { capital: 2_500_000, name: 'Местный застройщик' },
-  { capital: 5_000_000, name: 'Региональный подрядчик' },
-  { capital: 10_000_000, name: 'Городской девелопер' },
-  { capital: 18_000_000, name: 'Федеральный застройщик' },
-  { capital: 30_000_000, name: 'Корпорация недвижимости' },
+  { capital: 3_000_000, name: 'Местный застройщик' },
+  { capital: 6_000_000, name: 'Региональный подрядчик' },
+  { capital: 12_000_000, name: 'Городской девелопер' },
+  { capital: 21_600_000, name: 'Федеральный застройщик' },
+  { capital: 36_000_000, name: 'Корпорация недвижимости' },
 ] as const
 
 export function companyStatus(state: GameState): { name: string; index: number; progress: number } {
