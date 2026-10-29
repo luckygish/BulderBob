@@ -146,7 +146,7 @@ export const BUILDINGS: BuildingDef[] = [
 
 export const SUPPLIERS: Record<SupplierId, { name: string; short: string; description: string; feeRate: number; deliveryDays: number; initialPrice: number; initialStock: number }> = {
   north: { name: 'База Север', short: 'С', description: 'Сегодня · надёжные остатки', feeRate: 0.02, deliveryDays: 0, initialPrice: 1, initialStock: 1 },
-  south: { name: 'База Юг', short: 'Ю', description: 'Завтра · −5% к цене', feeRate: 0.035, deliveryDays: 1, initialPrice: 0.95, initialStock: 0.75 },
+  south: { name: 'База Юг', short: 'Ю', description: 'Завтра · −5% к цене', feeRate: 0.05, deliveryDays: 1, initialPrice: 0.95, initialStock: 0.75 },
 }
 
 export const WORKER_TYPES: Record<WorkerType, WorkerDef> = {
@@ -157,13 +157,13 @@ export const WORKER_TYPES: Record<WorkerType, WorkerDef> = {
 
 export const SKILLS: Record<SkillId, { name: string; description: string; speed: number; materialRate: number; logisticsRate: number; wageRate: number; teamBonus: number; equipmentBonusRate: number; allowsNight: boolean; negative: boolean }> = {
   alcohol: { name: 'Алкоголизм', description: '−15% скорости', speed: -0.15, materialRate: 0, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: true },
-  tudyaga: { name: 'Трудяга', description: '+20% скорости', speed: 0.2, materialRate: 0, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: false },
+  tudyaga: { name: 'Трудяга', description: '+3% скорости', speed: 0.03, materialRate: 0, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: false },
   owl: { name: 'Сова', description: 'Вечерние смены до полуночи (КПД 90%). Ставка +10%', speed: 0, materialRate: 0, logisticsRate: 0, wageRate: 0.1, teamBonus: 0, equipmentBonusRate: 0, allowsNight: true, negative: false },
   thief: { name: 'Вор', description: '+5% к материалам проекта', speed: 0, materialRate: 0.05, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: true },
   thrifty: { name: 'Бережливый', description: '−4% к материалам проекта', speed: 0, materialRate: -0.04, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: false },
   mentor: { name: 'Наставник', description: '+0.06 эффективности каждому члену бригады', speed: 0, materialRate: 0, logisticsRate: 0, wageRate: 0, teamBonus: 0.06, equipmentBonusRate: 0, allowsNight: false, negative: false },
   logistician: { name: 'Логист', description: '−5% к доставке его объекта', speed: 0, materialRate: 0, logisticsRate: -0.05, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: false },
-  technologist: { name: 'Технолог', description: '+15% к бонусу техники', speed: 0, materialRate: 0, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0.15, allowsNight: false, negative: false },
+  technologist: { name: 'Технолог', description: '+3% к бонусу техники', speed: 0, materialRate: 0, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0.03, allowsNight: false, negative: false },
   sluggish: { name: 'Медлительный', description: '−10% скорости', speed: -0.1, materialRate: 0, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: true },
   expensive: { name: 'Дорогой специалист', description: '+15% к его ставке', speed: 0, materialRate: 0, logisticsRate: 0, wageRate: 0.15, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: true },
 }

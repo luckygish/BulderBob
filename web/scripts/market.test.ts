@@ -36,10 +36,10 @@ describe('рынок: стартовый сток и цены баз', () => {
     }
   })
 
-  it('Юг: скидка 5%, объём 75% stockMax, доставка завтра, комиссия 3.5%', () => {
+  it('Юг: скидка 5%, объём 75% stockMax, доставка завтра, комиссия 5%', () => {
     const state = freshState()
     assert.equal(SUPPLIERS.south.initialPrice, 0.95)
-    assert.equal(SUPPLIERS.south.feeRate, 0.035)
+    assert.equal(SUPPLIERS.south.feeRate, 0.05)
     assert.equal(SUPPLIERS.south.deliveryDays, 1)
     const northStock = stockQty(state, 'concrete', 'north')
     const southStock = stockQty(state, 'concrete', 'south')
@@ -49,7 +49,7 @@ describe('рынок: стартовый сток и цены баз', () => {
     assert.equal(quote.arriveDay, state.day + 1)
     const expectedCost = Math.round(100 * Math.round(materialById('concrete').basePrice * 0.95) * (1 + seasonMaterialPriceRate(state)))
     assert.equal(quote.cost, expectedCost)
-    assert.equal(quote.fee, Math.round(expectedCost * 0.035))
+    assert.equal(quote.fee, Math.round(expectedCost * 0.05))
   })
 })
 
