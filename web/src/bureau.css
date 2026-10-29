@@ -1299,6 +1299,11 @@ progress.progress::-moz-progress-bar {
   font-size: var(--text-sm);
 }
 
+.season-copy h2 .badge {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
 .season-progress span {
   font-size: var(--text-xs);
 }

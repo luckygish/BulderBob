@@ -663,7 +663,7 @@ button.company-chip:hover { background: rgba(255,255,255,.085); }
 .company-profile-main h2 { font-size: 22px; }
 .company-profile-main p { color: var(--muted); font-size: 10px; margin: 6px 0 10px; }
 .avatar-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
-.avatar-option { border: 1px solid var(--line); background: #fff; border-radius: 8px; min-height: 94px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text); cursor: pointer; }
+.avatar-option { border: 1px solid var(--line); background: #fff; border-radius: 8px; min-height: 62px; display: flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; }
 .avatar-option:hover { border-color: #c8d4cf; }
 .avatar-option.active { border-color: var(--orange); box-shadow: 0 0 0 2px rgba(239,117,56,.13); }
 .avatar-option .company-avatar { width: 42px; height: 42px; border-radius: 8px; }
