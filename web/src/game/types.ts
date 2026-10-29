@@ -67,7 +67,7 @@ export interface SeasonDef {
   title: string
   weather: 'summer' | 'winter'
   goal: SeasonGoal
-  effects: { materialPriceRate?: number; foundationHoursRate?: number; extraWorkHour?: number; wageRate?: number; logisticsRate?: number; provisionRate?: number; maintenanceRate?: number; nightWageRate?: number }
+  effects: { materialPriceRate?: number; foundationHoursRate?: number; extraWorkHour?: number; wageRate?: number; logisticsRate?: number; provisionRate?: number; maintenanceRate?: number; nightWageRate?: number; nightEfficiencyRate?: number }
 }
 export interface SeasonNotice { success: boolean; title: string; text: string; final?: boolean }
 export interface EventOption {

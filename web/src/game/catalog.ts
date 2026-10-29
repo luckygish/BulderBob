@@ -158,7 +158,7 @@ export const WORKER_TYPES: Record<WorkerType, WorkerDef> = {
 export const SKILLS: Record<SkillId, { name: string; description: string; speed: number; materialRate: number; logisticsRate: number; wageRate: number; teamBonus: number; equipmentBonusRate: number; allowsNight: boolean; negative: boolean }> = {
   alcohol: { name: 'Алкоголизм', description: '−15% скорости', speed: -0.15, materialRate: 0, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: true },
   tudyaga: { name: 'Трудяга', description: '+20% скорости', speed: 0.2, materialRate: 0, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: false },
-  owl: { name: 'Сова', description: 'Разрешает ночные смены', speed: 0, materialRate: 0, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: true, negative: false },
+  owl: { name: 'Сова', description: 'Вечерние смены до полуночи (КПД 90%). Ставка +10%', speed: 0, materialRate: 0, logisticsRate: 0, wageRate: 0.1, teamBonus: 0, equipmentBonusRate: 0, allowsNight: true, negative: false },
   thief: { name: 'Вор', description: '+5% к материалам проекта', speed: 0, materialRate: 0.05, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: true },
   thrifty: { name: 'Бережливый', description: '−4% к материалам проекта', speed: 0, materialRate: -0.04, logisticsRate: 0, wageRate: 0, teamBonus: 0, equipmentBonusRate: 0, allowsNight: false, negative: false },
   mentor: { name: 'Наставник', description: '+0.06 эффективности каждому члену бригады', speed: 0, materialRate: 0, logisticsRate: 0, wageRate: 0, teamBonus: 0.06, equipmentBonusRate: 0, allowsNight: false, negative: false },
@@ -192,7 +192,7 @@ export const TECHNOLOGIES: TechDef[] = [
   { id: 'worker_training', name: 'Обучение рабочих', branch: 'Персонал', cost: 200_000, days: 2, requires: '', requiresMoney: 0, description: '+0.2 эффективности каждому работнику.' },
   { id: 'night_coordinator', name: 'Ночной координатор', branch: 'Персонал', cost: 400_000, days: 3, requires: 'worker_training', requiresMoney: 0, description: 'Ночной тариф снижен на 10%.' },
   { id: 'prof_standards', name: 'Профстандарты', branch: 'Персонал', cost: 800_000, days: 4, requires: 'worker_training', requiresMoney: 0, description: '+0.4 эффективности и вторая бригада.' },
-  { id: 'automation', name: 'Автоматизация', branch: 'Персонал', cost: 1_200_000, days: 5, requires: 'prof_standards', requiresMoney: 3_000_000, description: 'Ночные смены всем бригадам с оплатой ×1.5.' },
+  { id: 'automation', name: 'Автоматизация', branch: 'Персонал', cost: 1_200_000, days: 5, requires: 'prof_standards', requiresMoney: 3_000_000, description: 'Ночные смены всем бригадам: стройка 24/7, ночной КПД 75% и оплата ×1.5.' },
   { id: 'bank_account', name: 'Банковский счёт', branch: 'Финансы', cost: 150_000, days: 1, requires: '', requiresMoney: 0, description: 'Открывает кредиты, отчётность и финансовые инструменты.' },
   { id: 'overdraft', name: 'Овердрафт', branch: 'Финансы', cost: 350_000, days: 2, requires: 'bank_account', requiresMoney: 0, description: 'Долг до 300 000 ₽ не блокирует работу, но растёт на 1% в день.' },
   { id: 'good_leasing', name: 'Выгодный лизинг', branch: 'Финансы', cost: 500_000, days: 3, requires: 'bank_account', requiresMoney: 0, description: 'Скидка 5% на сумму лизинга.' },

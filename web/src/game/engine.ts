@@ -2,7 +2,7 @@ import { BALANCE, LOAN_OPTIONS } from './balance'
 import { BUILDINGS, CLIENTS, MATERIALS, PROVISIONS, SKILLS, SUPPLIERS, WORKER_NAMES, WORKER_TYPES, buildingById, equipmentById, materialById, techById } from './catalog'
 import { EVENTS } from './events'
 import { nextId, pick, random, randomInt } from './rng'
-import { currentSeason, seasonFoundationManHours, seasonMaintenanceRate, seasonMaterialPriceRate, seasonNightWageMultiplier, seasonWageRate, workDayEnd } from './seasons'
+import { currentSeason, seasonFoundationManHours, seasonMaintenanceRate, seasonMaterialPriceRate, seasonNightEfficiencyRate, seasonNightWageMultiplier, seasonWageRate, workDayEnd, workdayHours } from './seasons'
 import type { ActionResult, Bot, BotProject, EquipmentAsset, EquipmentId, GameState, InventoryBatch, Job, Loan, MaterialId, Project, Quote, SkillId, StageState, SupplierId, Worker, WorkerType } from './types'
 
 export function createNewGame(seed = Date.now()): GameState {
@@ -82,6 +82,18 @@ function skillsCompatible(current: SkillId[], candidate: SkillId): boolean {
   return groups.every((group) => !group.includes(candidate) || !current.some((skill) => group.includes(skill)))
 }
 
+const OWL_WEIGHT = 0.5
+
+function pickSkill(state: GameState, available: SkillId[]): SkillId {
+  const total = available.reduce((sum, id) => sum + (id === 'owl' ? OWL_WEIGHT : 1), 0)
+  let roll = random(state) * total
+  for (const id of available) {
+    roll -= id === 'owl' ? OWL_WEIGHT : 1
+    if (roll <= 0) return id
+  }
+  return available[available.length - 1]
+}
+
 export function generateWorkers(state: GameState, count: number): void {
   for (let i = 0; i < count; i += 1) {
     const roll = random(state)
@@ -93,7 +105,7 @@ export function generateWorkers(state: GameState, count: number): void {
     let attempts = 0
     while (skills.length < skillCount && attempts < 20) {
       attempts += 1
-      const skill = pick(state, availableSkills)
+      const skill = pickSkill(state, availableSkills)
       if (!skills.includes(skill) && skillsCompatible(skills, skill)) skills.push(skill)
     }
     state.candidates.push({
@@ -404,9 +416,16 @@ export function startStage(state: GameState, project: Project): ActionResult {
 }
 
 function canWorkNow(state: GameState, project: Project): boolean {
-  if (state.hour >= BALANCE.workDayStart && state.hour < workDayEnd(state)) return true
+  const dayEnd = workDayEnd(state)
+  if (state.hour >= BALANCE.workDayStart && state.hour < dayEnd) return true
   if (isResearched(state, 'automation')) return true
+  if (state.hour < dayEnd) return false
   return projectWorkers(state, project).some((worker) => worker.skills.includes('owl'))
+}
+
+export function nightEfficiency(state: GameState, hasOwl: boolean): number {
+  const base = isResearched(state, 'automation') ? (hasOwl ? 0.95 : 0.75) : 0.9
+  return Math.max(0.1, base * (1 + seasonNightEfficiencyRate(state)))
 }
 
 function processProjectHour(state: GameState, project: Project): void {
@@ -426,7 +445,8 @@ function processProjectHour(state: GameState, project: Project): void {
   }
   const stageDef = buildingById(project.job.building).stages[project.currentStage]
   const stageManHours = seasonFoundationManHours(state, stageDef.manHours)
-  project.stages[project.currentStage].progress += crewEfficiency(workers, workerBonus(state)) * (1 + projectEquipmentBonus(state, project)) / stageManHours
+  const efficiencyMultiplier = night ? nightEfficiency(state, workers.some((worker) => worker.skills.includes('owl'))) : 1
+  project.stages[project.currentStage].progress += crewEfficiency(workers, workerBonus(state)) * (1 + projectEquipmentBonus(state, project)) * efficiencyMultiplier / stageManHours
   if (asset?.status === 'rented' && asset.hoursRemaining <= 0) {
     state.equipment = state.equipment.filter((item) => item !== asset)
     project.equipmentAssetId = null
@@ -699,14 +719,16 @@ function tickBot(state: GameState, bot: Bot): void {
     }
   }
 
-  const extraHours = isResearched(state, 'automation') ? 10 : 0
-  const nightMult = isResearched(state, 'night_coordinator') ? 1.35 : 1.5
-  const dailyWages = crewHourly(bot.crew) * (10 + Math.round(extraHours * nightMult))
-  const workHours = 10 + extraHours
+  const workday = workdayHours(state)
+  const night = isResearched(state, 'automation') ? 24 - workday : 0
+  const hasOwl = bot.crew.some((worker) => worker.skills.includes('owl'))
+  const nightEff = night > 0 ? nightEfficiency(state, hasOwl) : 0
+  const nightWage = night > 0 ? seasonNightWageMultiplier(state) : 1
+  const dailyWages = crewHourly(bot.crew) * (workday + night * nightWage)
   const workingSet = bot.projects.filter((project) => botStageReadyForBuild(project, buildingById(project.job.building)))
   if (workingSet.length === 0 || bot.crew.length === 0 || bot.money < dailyWages + BALANCE.botDailyRental) return
-  bot.money -= dailyWages + BALANCE.botDailyRental
-  let work = crewEfficiency(bot.crew, workerBonus(state)) * workHours
+  bot.money -= Math.round(dailyWages) + BALANCE.botDailyRental
+  let work = crewEfficiency(bot.crew, workerBonus(state)) * (workday + night * nightEff)
   const usedWork: { project: BotProject; hours: number }[] = []
   for (const project of workingSet) {
     if (work <= 0) break

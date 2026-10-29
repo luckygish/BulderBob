@@ -9,7 +9,7 @@ export const SEASONS: SeasonDef[] = [
   { id: 'summer_3', name: 'Лето III', title: 'От одной бригады — к целой компании', weather: 'summer', goal: { capital: 8_000_000, reputation: 70, completed: 4 }, effects: { materialPriceRate: 0.12, extraWorkHour: 1, provisionRate: 0.1 } },
   { id: 'winter_3', name: 'Зима III', title: 'От зимней стройки — к тёплым отношениям с банком', weather: 'winter', goal: { capital: 10_000_000, reputation: 73, completed: 4 }, effects: { foundationHoursRate: 0.2, maintenanceRate: 0.2 } },
   { id: 'summer_4', name: 'Лето IV', title: 'От типовых домов — к знаковым объектам', weather: 'summer', goal: { capital: 12_000_000, reputation: 76, completed: 5 }, effects: { materialPriceRate: 0.12, extraWorkHour: 1, wageRate: 0.05 } },
-  { id: 'winter_4', name: 'Зима IV', title: 'От ночных смен — к званию генподрядчика', weather: 'winter', goal: { capital: 15_000_000, reputation: 79, completed: 5 }, effects: { foundationHoursRate: 0.2, nightWageRate: 0.25 } },
+  { id: 'winter_4', name: 'Зима IV', title: 'От ночных смен — к званию генподрядчика', weather: 'winter', goal: { capital: 15_000_000, reputation: 79, completed: 5 }, effects: { foundationHoursRate: 0.2, nightWageRate: 0.25, nightEfficiencyRate: -0.1 } },
   { id: 'summer_5', name: 'Лето V', title: 'От окраин — к центру города', weather: 'summer', goal: { capital: 18_000_000, reputation: 82, completed: 6 }, effects: { materialPriceRate: 0.15, extraWorkHour: 1, wageRate: 0.05 } },
   { id: 'winter_5', name: 'Зима V', title: 'От высоток — к легенде города', weather: 'winter', goal: { capital: 22_000_000, reputation: 85, completed: 6 }, effects: { foundationHoursRate: 0.25, materialPriceRate: 0.05 } },
 ]
@@ -32,6 +32,18 @@ export function seasonFoundationHoursRate(state: GameState): number {
 
 export function workDayEnd(state: GameState): number {
   return Math.min(23, BALANCE.workDayEnd + (currentSeason(state).effects.extraWorkHour ?? 0))
+}
+
+export function workdayHours(state: GameState): number {
+  return workDayEnd(state) - BALANCE.workDayStart
+}
+
+export function seasonNightWageRate(state: GameState): number {
+  return (currentSeason(state).effects.nightWageRate ?? 0) * seasonalPlanningMultiplier(state)
+}
+
+export function seasonNightEfficiencyRate(state: GameState): number {
+  return (currentSeason(state).effects.nightEfficiencyRate ?? 0) * seasonalPlanningMultiplier(state)
 }
 
 export function seasonWageRate(state: GameState): number {
@@ -70,5 +82,6 @@ export function seasonEffectText(state: GameState): string {
   if (effects.provisionRate) parts.push(`обеспечение +${Math.round(effects.provisionRate * 100)}%`)
   if (effects.maintenanceRate) parts.push(`обслуживание +${Math.round(effects.maintenanceRate * 100)}%`)
   if (effects.nightWageRate) parts.push(`ночной тариф +${Math.round(effects.nightWageRate * 100)}%`)
+  if (effects.nightEfficiencyRate) parts.push(`ночная эффективность ${effects.nightEfficiencyRate > 0 ? '+' : ''}${Math.round(effects.nightEfficiencyRate * 100)}%`)
   return parts.join(' · ')
 }

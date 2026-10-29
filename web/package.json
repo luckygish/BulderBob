@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "exe": "tauri build --no-bundle",
-    "test": "node --import tsx --test scripts/market.test.ts scripts/construction.test.ts scripts/progression.test.ts scripts/bots.test.ts scripts/events.test.ts"
+    "test": "node --import tsx --test scripts/market.test.ts scripts/construction.test.ts scripts/progression.test.ts scripts/bots.test.ts scripts/events.test.ts scripts/night.test.ts"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.12.4",

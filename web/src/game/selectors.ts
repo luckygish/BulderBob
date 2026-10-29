@@ -1,7 +1,7 @@
 import { BALANCE } from './balance'
 import { EQUIPMENT, PROVISIONS, buildingById, materialById } from './catalog'
-import { crewEfficiency, frontPrice, inventoryQty, isDebtBlocked, maxCrews, maxProjects, missingProvisions, netWorth, projectEquipmentReady, projectWorkers, requiredCrews } from './engine'
-import { currentSeason, seasonFoundationManHours, seasonMaintenanceRate, seasonMaterialPriceRate, seasonWageRate } from './seasons'
+import { crewEfficiency, frontPrice, inventoryQty, isDebtBlocked, isResearched, maxCrews, maxProjects, missingProvisions, netWorth, nightEfficiency, projectEquipmentReady, projectWorkers, requiredCrews } from './engine'
+import { currentSeason, seasonFoundationManHours, seasonMaintenanceRate, seasonMaterialPriceRate, seasonWageRate, workDayEnd } from './seasons'
 import type { GameState, Job, MaterialId, Project } from './types'
 
 export function estimateJob(state: GameState, job: Job) {
@@ -42,12 +42,16 @@ export function forecastProject(state: GameState, project: Project): { days: num
   const def = buildingById(project.job.building)
   const workers = projectWorkers(state, project)
   const efficiency = workers.length ? crewEfficiency(workers) : requiredCrews(project)
+  const workday = workDayEnd(state) - BALANCE.workDayStart
+  const hasOwl = workers.some((worker) => worker.skills.includes('owl'))
+  const night = isResearched(state, 'automation') ? 24 - workday : hasOwl ? 24 - workDayEnd(state) : 0
+  const hoursPerDay = night > 0 ? workday + night * nightEfficiency(state, hasOwl) : workday
   let remaining = 0
   def.stages.forEach((stage, index) => {
     const current = project.stages[index]
     if (current.status !== 'completed') remaining += seasonFoundationManHours(state, stage.manHours) * (1 - current.progress)
   })
-  const days = Math.ceil(remaining / efficiency / 10)
+  const days = Math.max(1, Math.ceil(remaining / efficiency / hoursPerDay))
   return { days, onTime: state.day + days <= project.job.deadline }
 }
 
