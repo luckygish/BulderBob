@@ -46,10 +46,10 @@ describe('ивенты: инварианты набора', () => {
     assert.equal(new Set(EVENTS.map((event) => event.id)).size, EVENTS.length)
   })
 
-  it('пары (season, day) уникальны, день в [1, 90], сезон в [0, 9]', () => {
+  it('пары (season, day) уникальны, день в [1, 40], сезон в [0, 9]', () => {
     const slots = new Set<string>()
     for (const event of EVENTS) {
-      assert.ok(event.day >= 1 && event.day <= 90, `${event.id}: день ${event.day}`)
+      assert.ok(event.day >= 1 && event.day <= 40, `${event.id}: день ${event.day}`)
       assert.ok(event.season >= 0 && event.season <= 9, `${event.id}: сезон ${event.season}`)
       if (event.when) continue
       const key = `${event.season}:${event.day}`
@@ -178,31 +178,31 @@ describe('ивенты: новые механики сезона', () => {
     assert.ok(bonusGain > normalGain, `зарплата с бонусом ${bonusGain} должна быть выше обычной ${normalGain}`)
   })
 
-  it('corp_final: продажа → окно "преданная мечта" на 9:86', () => {
+  it('corp_final: продажа → окно "преданная мечта" на 9:39', () => {
     const state = freshState()
     state.seasonIndex = 9
-    state.day = 85
+    state.day = 38
     state.hour = 23
     state.paused = false
     const result = resolveEvent(state, 'corp_final', 0)
     assert.equal(result.ok, true)
     assert.equal(state.corpFinalChoice, 'sold')
     tickHour(state)
-    assert.equal(state.day, 86)
+    assert.equal(state.day, 39)
     assert.equal(state.event, 'corp_final_sold')
   })
 
-  it('corp_final: отказ → окно "настоящая акула" на 9:86', () => {
+  it('corp_final: отказ → окно "настоящая акула" на 9:39', () => {
     const state = freshState()
     state.seasonIndex = 9
-    state.day = 85
+    state.day = 38
     state.hour = 23
     state.paused = false
     const result = resolveEvent(state, 'corp_final', 1)
     assert.equal(result.ok, true)
     assert.equal(state.corpFinalChoice, 'fight')
     tickHour(state)
-    assert.equal(state.day, 86)
+    assert.equal(state.day, 39)
     assert.equal(state.event, 'corp_final_fight')
   })
 })

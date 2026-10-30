@@ -14,7 +14,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Bulder — строим бизнес",
+        "title": "Bulder — construction tycoon",
         "width": 1280,
         "height": 820,
         "minWidth": 420,
@@ -31,7 +31,7 @@
     "active": true,
     "targets": "all",
     "category": "Game",
-    "shortDescription": "Bulder — экономический симулятор строительной компании",
+    "shortDescription": "Bulder — economic construction company simulator",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

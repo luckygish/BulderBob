@@ -33,7 +33,7 @@ describe('склад: потолок покупки', () => {
     const stockBefore = stockQty(state, 'concrete', 'north')
     const result = purchaseMaterial(state, 'concrete', 200, 'north')
     assert.equal(result.ok, false)
-    assert.match(result.message, /Склад не вмещает/)
+    assert.match(result.message, /doesn't fit/)
     assert.equal(state.money, moneyBefore)
     assert.equal(inventoryQty(state, 'concrete'), 900)
     assert.equal(stockQty(state, 'concrete', 'north'), stockBefore)
@@ -87,7 +87,7 @@ describe('склад: продажа излишка сверх потолка', 
     const soldQty = 700 - (1_000 - 900)
     const income = Math.round(soldQty * 100 * BALANCE.warehouseSaleRate)
     assert.equal(state.money, moneyBefore - 2_000 + 800_000 + income)
-    assert.ok(state.journal.some((entry) => entry.text.includes('сверх лимита')))
+    assert.ok(state.journal.some((entry) => entry.text.includes('overflow sold')))
   })
 
   it('поставка без объекта при почти полном складе продаёт излишек', () => {
@@ -105,7 +105,7 @@ describe('склад: продажа излишка сверх потолка', 
     const income = Math.round(200 * unitCost * BALANCE.warehouseSaleRate)
     const fee = warehouseStorageFee(state)
     assert.equal(state.money, moneyAfterPurchase + income - fee)
-    assert.ok(state.journal.some((entry) => entry.text.includes('сверх лимита')))
+    assert.ok(state.journal.some((entry) => entry.text.includes('overflow sold')))
   })
 })
 
@@ -154,7 +154,7 @@ describe('склад: ежедневное списание', () => {
     state.paused = false
     tickHour(state)
     assert.ok(state.debt > 0)
-    assert.ok(state.journal.some((entry) => entry.text.includes('Обслуживание · Склад')))
+    assert.ok(state.journal.some((entry) => entry.text.includes('Maintenance · Warehouse')))
   })
 })
 
@@ -174,7 +174,7 @@ describe('склад: пополнение объекта со склада', ()
     const reserved = project.reserved.lumber ?? []
     assert.equal(reserved.reduce((sum, batch) => sum + batch.qty, 0), taken)
     assert.equal(reserved[0]?.unitCost, 1_000)
-    assert.ok(state.journal.some((entry) => entry.text.includes('Пополнено со склада')))
+    assert.ok(state.journal.some((entry) => entry.text.includes('Restocked from warehouse')))
   })
 
   it('restockMaterialFromWarehouse переносит один материал', () => {
@@ -219,12 +219,12 @@ describe('склад: пополнение объекта со склада', ()
     const project = takeReconstruction(state)
     const empty = restockProjectFromWarehouse(state, project.id)
     assert.equal(empty.ok, false)
-    assert.match(empty.message, /На складе нет/)
+    assert.match(empty.message, /No missing materials/)
     for (const [material, qty] of Object.entries(requiredMaterials(project)) as [MaterialId, number][]) {
       project.reserved[material] = [{ qty, unitCost: 1 }]
     }
     const done = restockProjectFromWarehouse(state, project.id)
     assert.equal(done.ok, false)
-    assert.match(done.message, /уже есть/)
+    assert.match(done.message, /already in stock/)
   })
 })

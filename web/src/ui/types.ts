@@ -14,15 +14,15 @@ export interface ViewContext {
 }
 
 export const ROUTES: { id: Route; label: string; icon: string }[] = [
-  { id: 'overview', label: 'Обзор', icon: 'overview' },
-  { id: 'company', label: 'Компания', icon: 'company' },
-  { id: 'jobs', label: 'Заказы', icon: 'jobs' },
-  { id: 'construction', label: 'Строительство', icon: 'construction' },
-  { id: 'market', label: 'Рынок', icon: 'market' },
-  { id: 'hr', label: 'Кадры', icon: 'hr' },
-  { id: 'equipment', label: 'Техника', icon: 'equipment' },
-  { id: 'technology', label: 'Технологии', icon: 'tech' },
-  { id: 'bank', label: 'Банк', icon: 'bank' },
-  { id: 'report', label: 'Финансовый отчёт', icon: 'report' },
-  { id: 'competitors', label: 'Конкуренты', icon: 'competitors' },
+  { id: 'overview', label: 'Overview', icon: 'overview' },
+  { id: 'company', label: 'Company', icon: 'company' },
+  { id: 'jobs', label: 'Jobs', icon: 'jobs' },
+  { id: 'construction', label: 'Construction', icon: 'construction' },
+  { id: 'market', label: 'Market', icon: 'market' },
+  { id: 'hr', label: 'HR', icon: 'hr' },
+  { id: 'equipment', label: 'Equipment', icon: 'equipment' },
+  { id: 'technology', label: 'Technologies', icon: 'tech' },
+  { id: 'bank', label: 'Bank', icon: 'bank' },
+  { id: 'report', label: 'Financial report', icon: 'report' },
+  { id: 'competitors', label: 'Competitors', icon: 'competitors' },
 ]

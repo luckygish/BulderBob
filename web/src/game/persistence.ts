@@ -35,8 +35,8 @@ export function isDesktop(): boolean {
 function tauri(): { invoke: TauriInvoke; listen: TauriListen } {
   const api = window.__TAURI__
   return {
-    invoke: api?.core?.invoke ?? (() => Promise.reject(new Error('Tauri IPC недоступен'))),
-    listen: api?.event?.listen ?? (() => Promise.reject(new Error('Tauri events недоступны'))),
+    invoke: api?.core?.invoke ?? (() => Promise.reject(new Error('Tauri IPC unavailable'))),
+    listen: api?.event?.listen ?? (() => Promise.reject(new Error('Tauri events unavailable'))),
   }
 }
 
@@ -176,7 +176,7 @@ function readMeta(file: string, raw: string): SaveMeta | null {
   return {
     file,
     savedAt: fileToTime(file),
-    companyName: state.companyName || 'Без названия',
+    companyName: state.companyName || 'Untitled',
     day: state.day,
     season: state.seasonIndex + 1,
     capital: netWorth(state),
@@ -294,7 +294,7 @@ function migrateV2(state: GameState): GameState {
 
 function migrateV3(state: GameState): GameState {
   state.version = 4
-  state.companyName ||= 'Ваша компания'
+  state.companyName ||= 'Your company'
   state.companyAvatar ??= 0
   state.financeHistory ??= []
   state.event ??= null

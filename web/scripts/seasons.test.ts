@@ -47,7 +47,7 @@ describe('сезоны: репутация между сезонами', () => {
     assert.equal(state.day, 1)
     assert.equal(state.seasonIndex, seasonIndexBefore + 1)
     assert.equal(state.reputation, 65)
-    assert.ok(state.journal.some((entry) => entry.text.includes('+5 репутации')))
+    assert.ok(state.journal.some((entry) => entry.text.includes('+5 reputation')))
     assert.equal(state.seasonNotice?.success, true)
   })
 
@@ -63,6 +63,6 @@ describe('сезоны: репутация между сезонами', () => {
     assert.equal(state.seasonIndex, 1)
     assert.equal(state.reputation, 0)
     assert.equal(state.seasonNotice?.success, false)
-    assert.ok(state.journal.some((entry) => entry.text.includes('−15 репутации')))
+    assert.ok(state.journal.some((entry) => entry.text.includes('−15 reputation')))
   })
 })

@@ -56,17 +56,17 @@ export function forecastProject(state: GameState, project: Project): { days: num
 }
 
 export function projectBlockReason(state: GameState, project: Project): string {
-  if (isDebtBlocked(state)) return `Долг ${state.debt.toLocaleString('ru-RU')} ₽`
+  if (isDebtBlocked(state)) return `Debt $${state.debt.toLocaleString('en-US')}`
   const needCrews = requiredCrews(project)
   const assigned = project.crewIds.filter((crewId) => crewId >= 0 && crewId < maxCrews(state) && state.crews[crewId].workers.length > 0).length
-  if (assigned < needCrews) return needCrews > 1 ? `Нужны две бригады (${assigned}/2)` : 'Нужна бригада'
+  if (assigned < needCrews) return needCrews > 1 ? `Need two crews (${assigned}/2)` : 'Need a crew'
   if (!projectEquipmentReady(state, project)) {
     const stage = buildingById(project.job.building).stages[project.currentStage]
-    return `Нужна техника: ${stage.requiredEquipment?.map((id) => EQUIPMENT.find((item) => item.id === id)?.name).join(' или ')}`
+    return `Need equipment: ${stage.requiredEquipment?.map((id) => EQUIPMENT.find((item) => item.id === id)?.name).join(' or ')}`
   }
   const missing = missingProvisions(state)
   const names = Object.keys(missing).map((id) => PROVISIONS.find((item) => item.id === id)?.name).filter(Boolean)
-  if (names.length) return `Докупите обеспечение: ${names.join(', ')}`
+  if (names.length) return `Buy provisions: ${names.join(', ')}`
   return ''
 }
 
@@ -103,12 +103,12 @@ export function equipmentMaintenance(state: GameState): number {
 }
 
 export const COMPANY_STATUSES = [
-  { capital: 0, name: 'ИЖС · Частный подряд' },
-  { capital: 3_000_000, name: 'Местный застройщик' },
-  { capital: 6_000_000, name: 'Региональный подрядчик' },
-  { capital: 12_000_000, name: 'Городской девелопер' },
-  { capital: 21_600_000, name: 'Федеральный застройщик' },
-  { capital: 36_000_000, name: 'Корпорация недвижимости' },
+  { capital: 0, name: 'Private contractor' },
+  { capital: 3_000_000, name: 'Local developer' },
+  { capital: 6_000_000, name: 'Regional contractor' },
+  { capital: 12_000_000, name: 'City developer' },
+  { capital: 21_600_000, name: 'Federal developer' },
+  { capital: 36_000_000, name: 'Real estate corporation' },
 ] as const
 
 export function companyStatus(state: GameState): { name: string; index: number; progress: number } {

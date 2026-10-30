@@ -6,13 +6,13 @@ import avatar4 from '../../assets/avatar_4.png'
 import avatar5 from '../../assets/avatar_5.png'
 import avatar6 from '../../assets/avatar_6.png'
 
-export const money = (value: number): string => `${Math.round(value).toLocaleString('ru-RU')} ₽`
-export const number = (value: number): string => Math.round(value).toLocaleString('ru-RU')
+export const money = (value: number): string => `$${Math.round(value).toLocaleString('en-US')}`
+export const number = (value: number): string => Math.round(value).toLocaleString('en-US')
 export const percent = (value: number): string => `${Math.round(value * 100)}%`
 export const compactMoney = (value: number): string => {
   const abs = Math.abs(value)
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} млн ₽`
-  if (abs >= 1_000) return `${Math.round(value / 1_000).toLocaleString('ru-RU')} тыс. ₽`
+  if (abs >= 1_000_000) return `$${(value / 1_000_000).toLocaleString('en-US', { maximumFractionDigits: 2 })}M`
+  if (abs >= 1_000) return `$${Math.round(value / 1_000).toLocaleString('en-US')}K`
   return money(value)
 }
 export const esc = (value: string): string => value.replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]!)
@@ -36,7 +36,7 @@ export function pageHeading(eyebrow: string, title: string, description: string,
 }
 
 export function journalItem(entry: JournalEntry): string {
-  return `<article class="journal-item journal-${entry.kind}"><div class="journal-meta">День ${entry.day} · ${pad(entry.hour)}:00</div><p>${esc(entry.text)}</p></article>`
+  return `<article class="journal-item journal-${entry.kind}"><div class="journal-meta">Day ${entry.day} · ${pad(entry.hour)}:00</div><p>${esc(entry.text)}</p></article>`
 }
 
 const AVATARS = [avatar1, avatar2, avatar3, avatar4, avatar5, avatar6]

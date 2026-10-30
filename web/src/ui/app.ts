@@ -99,8 +99,8 @@ export class App {
   private saveCompanyName(): void {
     const input = document.querySelector<HTMLInputElement>('#company-name')
     const name = input?.value.trim().replace(/\s+/g, ' ') ?? ''
-    if (name.length < 2 || name.length > 30) this.commit({ ok: false, message: 'Название должно быть от 2 до 30 символов.' })
-    else { this.state!.companyName = name; this.commit({ ok: true, message: 'Название компании сохранено.' }) }
+    if (name.length < 2 || name.length > 30) this.commit({ ok: false, message: 'Company name must be 2–30 characters.' })
+    else { this.state!.companyName = name; this.commit({ ok: true, message: 'Company name saved.' }) }
   }
 
   private context(): ViewContext {
@@ -127,13 +127,13 @@ export class App {
   private startScreenMarkup(): string {
     return `<div class="start-screen"><div class="start-shell">
       <div class="start-logo">${icon('logo')}</div>
-      <div class="eyebrow">Экономический симулятор</div>
+      <div class="eyebrow">Economic simulation</div>
       <h1>Bulder</h1>
-      <p>Стройте объекты, нанимайте бригады и обыгрывайте конкурентов на едином рынке.</p>
+      <p>Build projects, hire crews and outplay competitors on a shared market.</p>
       <div class="start-actions">
-        <button class="btn btn-primary start-btn" data-action="menu-new-game">${icon('plus')} Новая игра</button>
-        <button class="btn btn-secondary start-btn" data-action="menu-load">${icon('document')} Загрузить</button>
-        <button class="btn btn-ghost start-btn" data-action="menu-quit">${icon('close')} Выход</button>
+        <button class="btn btn-primary start-btn" data-action="menu-new-game">${icon('plus')} New game</button>
+        <button class="btn btn-secondary start-btn" data-action="menu-load">${icon('document')} Load</button>
+        <button class="btn btn-ghost start-btn" data-action="menu-quit">${icon('close')} Quit</button>
       </div>
       ${this.saveDirText ? `<p class="start-save-dir">${esc(this.saveDirText)}</p>` : ''}
     </div></div>`
@@ -144,20 +144,20 @@ export class App {
       ? `<div class="save-table">${this.menuSaves.map((save) => `
         <div class="save-row">
           <div class="save-file"><strong>${esc(save.companyName)}</strong></div>
-          <div class="save-meta">День ${save.day} · Сезон ${save.season}</div>
+          <div class="save-meta">Day ${save.day} · Season ${save.season}</div>
           <div class="save-capital">${compactMoney(save.capital)}</div>
           <div class="save-date">${this.formatSaveDate(save.savedAt)}</div>
-          <button class="btn btn-primary save-load" data-action="load-save" data-file="${esc(save.file)}">Загрузить</button>
+          <button class="btn btn-primary save-load" data-action="load-save" data-file="${esc(save.file)}">Load</button>
         </div>`).join('')}</div>`
-      : `<div class="save-empty">${icon('document')}<strong>Нет сохранений</strong><span>Начните новую игру — компания появится в списке.</span></div>`
+      : `<div class="save-empty">${icon('document')}<strong>No saves</strong><span>Start a new game — your company will appear in the list.</span></div>`
     return `<div class="start-screen"><div class="start-shell load-shell">
-      <div class="eyebrow">Продолжить</div>
-      <h1>Загрузить</h1>
-      <div class="save-list-head"><span>Компания</span><span>День / Сезон</span><span>Капитал</span><span>Дата</span><span></span></div>
-      ${this.menuBusy ? `<div class="start-busy">Загрузка…</div>` : rows}
+      <div class="eyebrow">Continue</div>
+      <h1>Load</h1>
+      <div class="save-list-head"><span>Company</span><span>Day / Season</span><span>Capital</span><span>Date</span><span></span></div>
+      ${this.menuBusy ? `<div class="start-busy">Loading…</div>` : rows}
       <div class="start-actions load-actions">
-        <button class="btn btn-secondary start-btn" data-action="menu-new-game">${icon('plus')} Новая игра</button>
-        <button class="btn btn-ghost start-btn" data-action="menu-back">${icon('arrow')} Назад</button>
+        <button class="btn btn-secondary start-btn" data-action="menu-new-game">${icon('plus')} New game</button>
+        <button class="btn btn-ghost start-btn" data-action="menu-back">${icon('arrow')} Back</button>
       </div>
       ${this.saveDirText ? `<p class="start-save-dir">${esc(this.saveDirText)}</p>` : ''}
     </div></div>`
@@ -168,12 +168,12 @@ export class App {
     const stage = document.createElement('div')
     stage.innerHTML = markup
     this.root.replaceChildren(stage.firstElementChild!)
-    document.title = this.menuMode === 'load' ? 'Загрузить · Bulder' : 'Bulder — строим бизнес'
+    document.title = this.menuMode === 'load' ? 'Load · Bulder' : 'Bulder — construction tycoon'
   }
 
   private formatSaveDate(time: number): string {
     if (!time) return '—'
-    return new Date(time).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    return new Date(time).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
   private async startNewGame(): Promise<void> {
@@ -191,7 +191,7 @@ export class App {
     this.menuMode = 'start'
     this.render()
     this.schedule()
-    this.notify('Новая компания создана.', 'success')
+    this.notify('New company created.', 'success')
     this.showWelcome()
   }
 
@@ -201,17 +201,17 @@ export class App {
     state.paused = true
     this.render()
     this.openModal(`<div class="modal-icon">${icon('hardhat')}</div>
-      <div class="eyebrow">Начало карьеры</div>
-      <h2>Привет!</h2>
-      <p>Ты — прораб Балдур Боб. Двадцать лет ты вкалывал на чужие компании, а теперь накопил стартовый капитал — пора открывать собственное дело. Впереди десять сезонов стройки, бригад и конкуренции. Построй что-то великое!</p>
-      <div class="button-row modal-actions"><button class="btn btn-primary" data-action="welcome-start">За работу!</button></div>`)
+      <div class="eyebrow">Career start</div>
+      <h2>Hi!</h2>
+      <p>You are site foreman Balder Bob. For twenty years you worked for other companies, and now you have saved up starting capital — time to open your own business. Ahead are ten seasons of construction, crews and competition. Build something great!</p>
+      <div class="button-row modal-actions"><button class="btn btn-primary" data-action="welcome-start">Let's work!</button></div>`)
   }
 
   private async loadSavedGame(file: string): Promise<void> {
     const loaded = await loadGame(file)
     if (!loaded) {
       this.menuBusy = false
-      this.notify('Не удалось загрузить сохранение.', 'error')
+      this.notify('Failed to load the save.', 'error')
       void this.refreshLoadScreen()
       return
     }
@@ -226,7 +226,7 @@ export class App {
     this.schedule()
     if (loaded.seasonNotice) this.showSeasonNotice()
     if (loaded.event) this.showEvent()
-    this.notify('Сохранение загружено.', 'success')
+    this.notify('Save loaded.', 'success')
   }
 
   private async refreshLoadScreen(): Promise<void> {
@@ -270,13 +270,13 @@ export class App {
     this.menuMode = 'start'
     this.menuBusy = false
     this.renderStartScreen()
-    this.notify('Игра сохранена. До встречи!', 'success')
+    this.notify('Game saved. See you later!', 'success')
   }
 
   private showSaveOverlay(): void {
     const overlay = document.createElement('div')
     overlay.className = 'save-overlay'
-    overlay.innerHTML = `<div class="save-overlay-card"><div class="save-spinner"></div><span>Сохранение…</span></div>`
+    overlay.innerHTML = `<div class="save-overlay-card"><div class="save-spinner"></div><span>Saving…</span></div>`
     document.body.append(overlay)
   }
 
@@ -294,27 +294,27 @@ export class App {
     const company = companyStatus(state)
     const work = state.hour >= BALANCE.workDayStart && state.hour < workDayEnd(state)
     const saveName = this.activeSave ? this.activeSave.replace(/\.json$/, '') : ''
-    const navMarkup = visibleRoutes.map((item) => `<button class="nav-item ${item.id === this.route ? 'active' : ''}" data-route="${item.id}" ${item.id === this.route ? 'aria-current="page"' : ''}>${icon(item.icon)}<span>${item.label}</span>${item.id === 'construction' && state.projects.length ? `<em>${state.projects.length}</em>` : ''}${item.id === 'jobs' && state.jobs.length ? `<small>${state.jobs.length}</small>` : ''}</button>${item.id === 'competitors' ? `<button class="nav-item nav-exit" data-action="save-exit">${icon('close')}<span>Выйти и сохранить</span></button>` : ''}`).join('')
+    const navMarkup = visibleRoutes.map((item) => `<button class="nav-item ${item.id === this.route ? 'active' : ''}" data-route="${item.id}" ${item.id === this.route ? 'aria-current="page"' : ''}>${icon(item.icon)}<span>${item.label}</span>${item.id === 'construction' && state.projects.length ? `<em>${state.projects.length}</em>` : ''}${item.id === 'jobs' && state.jobs.length ? `<small>${state.jobs.length}</small>` : ''}</button>${item.id === 'competitors' ? `<button class="nav-item nav-exit" data-action="save-exit">${icon('close')}<span>Save and exit</span></button>` : ''}`).join('')
     const markup = `<div class="app-shell ${this.navOpen ? 'nav-open' : ''}">
-      <aside class="sidebar" aria-label="Основная навигация">
-        <div class="brand"><span class="brand-mark">${icon('logo')}</span><div><strong>Bulder</strong><span>Строим бизнес</span></div><button class="icon-btn sidebar-close" data-action="close-nav" aria-label="Закрыть меню">${icon('close')}</button></div>
+      <aside class="sidebar" aria-label="Main navigation">
+        <div class="brand"><span class="brand-mark">${icon('logo')}</span><div><strong>Bulder</strong><span>Building business</span></div><button class="icon-btn sidebar-close" data-action="close-nav" aria-label="Close menu">${icon('close')}</button></div>
         <button class="company-chip" data-route="company">${companyAvatar(state.companyAvatar, 'company-avatar-small')}<div><strong>${esc(state.companyName)}</strong><span>${company.name}</span></div><span class="status-dot"></span></button>
         <nav class="main-nav">${navMarkup}</nav>
-        <div class="sidebar-season"><div class="eyebrow">Текущий сезон</div><div><strong>День ${state.day}</strong><span>/ ${BALANCE.seasonDays}</span></div><div class="season-track"><span style="width:${Math.min(100, state.day / BALANCE.seasonDays * 100)}%"></span></div><p>Капитал ${compactMoney(netWorth(state))}</p></div>
-        <div class="sidebar-footer" title="${esc(this.activeSave ?? '')}"><span class="status-dot"></span><span class="save-file-label">${saveName ? `Сохранить: ${esc(saveName)}` : 'Новый сейв не создан'}</span></div>
+        <div class="sidebar-season"><div class="eyebrow">Current season</div><div><strong>Day ${state.day}</strong><span>/ ${BALANCE.seasonDays}</span></div><div class="season-track"><span style="width:${Math.min(100, state.day / BALANCE.seasonDays * 100)}%"></span></div><p>Capital ${compactMoney(netWorth(state))}</p></div>
+        <div class="sidebar-footer" title="${esc(this.activeSave ?? '')}"><span class="status-dot"></span><span class="save-file-label">${saveName ? `Save: ${esc(saveName)}` : 'No save file created yet'}</span></div>
       </aside>
-      <button class="nav-backdrop" data-action="close-nav" aria-label="Закрыть меню"></button>
+      <button class="nav-backdrop" data-action="close-nav" aria-label="Close menu"></button>
       <div class="workspace">
-        <header class="topbar"><div class="topbar-context"><button class="icon-btn mobile-menu" data-action="open-nav" aria-label="Открыть меню">${icon('menu')}</button><div><span>${route.label}</span><strong>${state.paused ? 'Игра на паузе' : work ? 'Рабочий день' : 'Ночное время'}</strong></div></div>
-          <div class="topbar-metrics"><div class="top-metric money-metric"><span>На счёте</span><strong>${compactMoney(state.money)}</strong></div><div class="top-metric"><span>${icon('clock')} День ${state.day}</span><strong>${pad(state.hour)}:00</strong></div><div class="top-metric reputation-metric" title="Репутация влияет на заказы, технологии и достижения." tabindex="0"><span>Репутация</span><strong>${icon('star')} ${state.reputation}</strong><div class="rep-tooltip" role="tooltip">Репутация влияет на заказы, технологии и достижения. Получайте её за успехи и события.</div></div></div>
-          <div class="time-controls"><button class="btn btn-small ${state.paused ? 'btn-primary' : 'btn-secondary'}" data-action="pause" aria-label="${state.paused ? 'Продолжить' : 'Пауза'}">${icon(state.paused ? 'play' : 'pause')}<span>${state.paused ? 'Продолжить' : 'Пауза'}</span></button><div class="speed-control" aria-label="Скорость игры">${([1, 2, 4] as Speed[]).map((speed) => `<button class="${state.speed === speed && !state.paused ? 'active' : ''}" data-action="speed" data-id="${speed}" aria-label="Скорость ×${speed}">×${speed}</button>`).join('')}</div></div>
-          <div class="topbar-actions"><button class="icon-btn ${this.journalOpen ? 'active' : ''}" data-action="journal" aria-label="Журнал (J)">${icon('journal')}</button><button class="icon-btn" data-action="new-game" aria-label="Новая игра" title="Новая игра">${icon('plus')}</button></div>
+        <header class="topbar"><div class="topbar-context"><button class="icon-btn mobile-menu" data-action="open-nav" aria-label="Open menu">${icon('menu')}</button><div><span>${route.label}</span><strong>${state.paused ? 'Game paused' : work ? 'Workday' : 'Night time'}</strong></div></div>
+          <div class="topbar-metrics"><div class="top-metric money-metric"><span>On account</span><strong>${compactMoney(state.money)}</strong></div><div class="top-metric"><span>${icon('clock')} Day ${state.day}</span><strong>${pad(state.hour)}:00</strong></div><div class="top-metric reputation-metric" title="Reputation affects orders, technologies and achievements." tabindex="0"><span>Reputation</span><strong>${icon('star')} ${state.reputation}</strong><div class="rep-tooltip" role="tooltip">Reputation affects orders, technologies and achievements. Earn it through victories and events.</div></div></div>
+          <div class="time-controls"><button class="btn btn-small ${state.paused ? 'btn-primary' : 'btn-secondary'}" data-action="pause" aria-label="${state.paused ? 'Resume' : 'Pause'}">${icon(state.paused ? 'play' : 'pause')}<span>${state.paused ? 'Resume' : 'Pause'}</span></button><div class="speed-control" aria-label="Game speed">${([1, 2, 4] as Speed[]).map((speed) => `<button class="${state.speed === speed && !state.paused ? 'active' : ''}" data-action="speed" data-id="${speed}" aria-label="Speed ×${speed}">×${speed}</button>`).join('')}</div></div>
+          <div class="topbar-actions"><button class="icon-btn ${this.journalOpen ? 'active' : ''}" data-action="journal" aria-label="Journal (J)">${icon('journal')}</button><button class="icon-btn" data-action="new-game" aria-label="New game" title="New game">${icon('plus')}</button></div>
         </header>
-        ${isDebtBlocked(state) ? `<div class="global-alert">${icon('alert')} Работа остановлена: обязательства ${money(state.debt)}.<button class="text-btn" data-route="bank">Открыть банк ${icon('arrow')}</button></div>` : ''}
+        ${isDebtBlocked(state) ? `<div class="global-alert">${icon('alert')} Work halted: obligations ${money(state.debt)}.<button class="text-btn" data-route="bank">Open bank ${icon('arrow')}</button></div>` : ''}
         <main class="main-content" id="main-content">${this.page()}</main>
       </div>
       <div class="journal-backdrop ${this.journalOpen ? 'open' : ''}" data-action="journal"></div>
-      <aside class="journal-drawer ${this.journalOpen ? 'open' : ''}" aria-label="Журнал событий"><div class="journal-header"><div><div class="eyebrow">Хроника компании</div><h2>Журнал</h2></div><button class="icon-btn" data-action="journal" aria-label="Закрыть журнал">${icon('close')}</button></div><div class="journal-list">${[...state.journal].reverse().map(journalItem).join('')}</div><div class="journal-footer">Последние ${state.journal.length} событий · клавиша J</div></aside>
+      <aside class="journal-drawer ${this.journalOpen ? 'open' : ''}" aria-label="Event journal"><div class="journal-header"><div><div class="eyebrow">Company chronicle</div><h2>Journal</h2></div><button class="icon-btn" data-action="journal" aria-label="Close journal">${icon('close')}</button></div><div class="journal-list">${[...state.journal].reverse().map(journalItem).join('')}</div><div class="journal-footer">Last ${state.journal.length} events · press J</div></aside>
       <dialog id="app-dialog" class="app-dialog"></dialog>
     </div>`
     const stage = document.createElement('div')
@@ -370,7 +370,7 @@ export class App {
         this.renderStartScreen()
         void this.loadSavedGame(button.dataset.file ?? '')
         break
-      case 'select-avatar': this.state!.companyAvatar = Math.max(0, Math.min(5, Number(id))); this.commit({ ok: true, message: 'Аватар компании обновлён.' }); break
+      case 'select-avatar': this.state!.companyAvatar = Math.max(0, Math.min(5, Number(id))); this.commit({ ok: true, message: 'Company avatar updated.' }); break
       case 'save-company': this.saveCompanyName(); break
       case 'pause': togglePause(this.state!); this.commit(); break
       case 'speed': setSpeed(this.state!, Number(id) as Speed); this.commit(); break
@@ -378,7 +378,7 @@ export class App {
       case 'confirm-new-game': this.closeModal(); void this.startNewGame(); break
       case 'close-modal':
         if (this.state?.event || this.state?.seasonNotice) {
-          this.notify('Выберите вариант.', 'error')
+          this.notify('Choose an option.', 'error')
           break
         }
         this.closeModal(); break
@@ -486,7 +486,7 @@ export class App {
       }
       return
     }
-    if (event.key.toLowerCase() === 'j' || event.key.toLowerCase() === 'о') {
+    if (event.key.toLowerCase() === 'j') {
       event.preventDefault(); this.journalOpen = !this.journalOpen; this.render()
     }
     if (event.code === 'Space') { event.preventDefault(); togglePause(this.state); this.commit() }
@@ -498,7 +498,7 @@ export class App {
     this.save()
     this.render()
 this.notify(result.message, result.ok ? 'success' : 'error')
-    if (tutorial) this.notify(tutorial.reward > 0 ? `Шаг выполнен: ${tutorial.title} · +${tutorial.reward} репутации` : `Шаг выполнен: ${tutorial.title}`, 'success')
+    if (tutorial) this.notify(tutorial.reward > 0 ? `Step completed: ${tutorial.title} · +${tutorial.reward} reputation` : `Step completed: ${tutorial.title}`, 'success')
   }
 
   private commit(result?: ActionResult): void {
@@ -507,7 +507,7 @@ this.notify(result.message, result.ok ? 'success' : 'error')
     this.render()
     this.schedule()
     if (result) this.notify(result.message, result.ok ? 'success' : 'error')
-    if (tutorial) this.notify(tutorial.reward > 0 ? `Шаг выполнен: ${tutorial.title} · +${tutorial.reward} репутации` : `Шаг выполнен: ${tutorial.title}`, 'success')
+    if (tutorial) this.notify(tutorial.reward > 0 ? `Step completed: ${tutorial.title} · +${tutorial.reward} reputation` : `Step completed: ${tutorial.title}`, 'success')
   }
 
   private save(): void {
@@ -526,7 +526,7 @@ this.notify(result.message, result.ok ? 'success' : 'error')
     const dialog = document.querySelector<HTMLDialogElement>('#app-dialog')
     if (!dialog) return
     dialog.classList.toggle('event-active', className === 'event-active')
-    dialog.innerHTML = `<button class="icon-btn modal-close" data-action="close-modal" aria-label="Закрыть">${icon('close')}</button>${content}`
+    dialog.innerHTML = `<button class="icon-btn modal-close" data-action="close-modal" aria-label="Close">${icon('close')}</button>${content}`
     dialog.showModal()
   }
 
@@ -538,7 +538,7 @@ this.notify(result.message, result.ok ? 'success' : 'error')
   }
 
   private confirmNewGame(): void {
-    this.openModal(`<div class="modal-icon warning">${icon('alert')}</div><div class="eyebrow">Начать заново</div><h2>Создать новую компанию?</h2><p>Текущий прогресс останется в своём файле сохранения, будет начата новая игра.</p><div class="button-row modal-actions"><button class="btn btn-secondary" data-action="close-modal">Остаться</button><button class="btn btn-danger" data-action="confirm-new-game">Новая игра</button></div>`)
+    this.openModal(`<div class="modal-icon warning">${icon('alert')}</div><div class="eyebrow">Start over</div><h2>Create a new company?</h2><p>Current progress stays in its own save file; a new game will begin.</p><div class="button-row modal-actions"><button class="btn btn-secondary" data-action="close-modal">Stay</button><button class="btn btn-danger" data-action="confirm-new-game">New game</button></div>`)
   }
 
   private async quitToMenu(): Promise<void> {
@@ -550,13 +550,13 @@ this.notify(result.message, result.ok ? 'success' : 'error')
         this.closing = false
       }
     } else {
-      this.notify('В браузерной версии окно не закрывается — закройте вкладку.', 'success')
+      this.notify('In the browser version the window cannot be closed — close the tab.', 'success')
     }
   }
 
   private showRental(id: EquipmentId): void {
     const item = equipmentById(id)
-    this.openModal(`<div class="modal-icon">${icon('equipment')}</div><div class="eyebrow">Почасовая аренда</div><h2>${item.name}</h2><p>${money(item.rentPerHour)} за фактический рабочий час. Часы расходуются только на назначенном объекте.</p><label class="field"><span>Срок аренды, часов</span><input id="rent-hours" data-equipment="${id}" type="number" min="${item.minRentHours}" max="500" value="${item.minRentHours}" /></label><div class="modal-total"><span>К оплате</span><strong id="rent-total">${money(item.minRentHours * item.rentPerHour)}</strong></div><div class="button-row modal-actions"><button class="btn btn-secondary" data-action="close-modal">Отмена</button><button class="btn btn-primary" data-action="confirm-rent" data-id="${id}">Арендовать</button></div>`)
+    this.openModal(`<div class="modal-icon">${icon('equipment')}</div><div class="eyebrow">Hourly rental</div><h2>${item.name}</h2><p>${money(item.rentPerHour)} per actual work hour. Hours are spent only on the assigned project.</p><label class="field"><span>Rental period, hours</span><input id="rent-hours" data-equipment="${id}" type="number" min="${item.minRentHours}" max="500" value="${item.minRentHours}" /></label><div class="modal-total"><span>To pay</span><strong id="rent-total">${money(item.minRentHours * item.rentPerHour)}</strong></div><div class="button-row modal-actions"><button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="confirm-rent" data-id="${id}">Rent</button></div>`)
   }
 
   private showLease(id: EquipmentId): void {
@@ -564,7 +564,7 @@ this.notify(result.message, result.ok ? 'success' : 'error')
     const discount = isResearched(this.state!, 'good_leasing') ? 0.92 : 1
     const total = Math.round(item.price * (1 + BALANCE.leaseInterest) * discount)
     const down = Math.round(item.price * BALANCE.leaseDownPayment)
-    this.openModal(`<div class="modal-icon">${icon('document')}</div><div class="eyebrow">Лизинг на ${BALANCE.leaseDays} дней</div><h2>${item.name}</h2><dl class="cost-list"><div><dt>Первый взнос 20%</dt><dd>${money(down)}</dd></div><div><dt>Полная стоимость</dt><dd>${money(total)}</dd></div><div><dt>Платёж в день</dt><dd>${money(Math.ceil((total - down) / BALANCE.leaseDays))}</dd></div><div><dt>Переплата</dt><dd>${money(total - item.price)}</dd></div></dl><div class="button-row modal-actions"><button class="btn btn-secondary" data-action="close-modal">Отмена</button><button class="btn btn-primary" data-action="confirm-lease" data-id="${id}">Оформить лизинг</button></div>`)
+    this.openModal(`<div class="modal-icon">${icon('document')}</div><div class="eyebrow">Lease for ${BALANCE.leaseDays} days</div><h2>${item.name}</h2><dl class="cost-list"><div><dt>Down payment 20%</dt><dd>${money(down)}</dd></div><div><dt>Full cost</dt><dd>${money(total)}</dd></div><div><dt>Daily payment</dt><dd>${money(Math.ceil((total - down) / BALANCE.leaseDays))}</dd></div><div><dt>Overpayment</dt><dd>${money(total - item.price)}</dd></div></dl><div class="button-row modal-actions"><button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="confirm-lease" data-id="${id}">Sign lease</button></div>`)
   }
 
   private showReport(id: string): void {
@@ -572,7 +572,7 @@ this.notify(result.message, result.ok ? 'success' : 'error')
     if (!project) return
     const costs = projectCosts(project)
     const finalPayment = Math.max(0, project.job.budget - project.penalty - project.advance)
-    this.openModal(`<div class="modal-icon success">${icon('document')}</div><div class="eyebrow">Финансовый отчёт · день ${project.completedDay}</div><h2>${buildingById(project.job.building).name}</h2><p>${project.job.client} · ${project.totalHours} рабочих часов</p><dl class="cost-list"><div><dt>Бюджет договора</dt><dd>${money(project.job.budget)}</dd></div>${project.advance ? `<div><dt>Аванс получен ранее</dt><dd>−${money(project.advance)}</dd></div>` : ''}${project.penalty ? `<div><dt>Штраф за срок</dt><dd class="negative">−${money(project.penalty)}</dd></div>` : ''}<div><dt>Поступление при сдаче</dt><dd class="positive">${money(finalPayment)}</dd></div><div><dt>Материалы</dt><dd>−${money(project.materialCost)}</dd></div><div><dt>Труд</dt><dd>−${money(project.laborCost)}</dd></div><div><dt>Доставка</dt><dd>−${money(project.logisticsCost)}</dd></div><div><dt>Техника</dt><dd>−${money(project.equipmentCost)}</dd></div>${project.factoringFee ? `<div><dt>Факторинговая комиссия</dt><dd>−${money(project.factoringFee)}</dd></div>` : ''}<div class="cost-total"><dt>Чистая прибыль</dt><dd class="${costs.profit >= 0 ? 'positive' : 'negative'}">${money(costs.profit)}</dd></div></dl><button class="btn btn-primary btn-block" data-action="close-modal">Закрыть отчёт</button>`)
+    this.openModal(`<div class="modal-icon success">${icon('document')}</div><div class="eyebrow">Financial report · day ${project.completedDay}</div><h2>${buildingById(project.job.building).name}</h2><p>${project.job.client} · ${project.totalHours} work hours</p><dl class="cost-list"><div><dt>Contract budget</dt><dd>${money(project.job.budget)}</dd></div>${project.advance ? `<div><dt>Advance received earlier</dt><dd>−${money(project.advance)}</dd></div>` : ''}${project.penalty ? `<div><dt>Late penalty</dt><dd class="negative">−${money(project.penalty)}</dd></div>` : ''}<div><dt>Payment on delivery</dt><dd class="positive">${money(finalPayment)}</dd></div><div><dt>Materials</dt><dd>−${money(project.materialCost)}</dd></div><div><dt>Labor</dt><dd>−${money(project.laborCost)}</dd></div><div><dt>Delivery</dt><dd>−${money(project.logisticsCost)}</dd></div><div><dt>Equipment</dt><dd>−${money(project.equipmentCost)}</dd></div>${project.factoringFee ? `<div><dt>Factoring fee</dt><dd>−${money(project.factoringFee)}</dd></div>` : ''}<div class="cost-total"><dt>Net profit</dt><dd class="${costs.profit >= 0 ? 'positive' : 'negative'}">${money(costs.profit)}</dd></div></dl><button class="btn btn-primary btn-block" data-action="close-modal">Close report</button>`)
   }
 
   private showSellEquipment(assetId: string): void {
@@ -581,7 +581,7 @@ this.notify(result.message, result.ok ? 'success' : 'error')
     const item = equipmentById(asset.id)
     const saleRate = this.state!.research.dealer_network?.status === 'done' ? 0.85 : 0.7
     const price = Math.round(item.price * saleRate)
-    this.openModal(`<div class="modal-icon warning">${icon('equipment')}</div><div class="eyebrow">Продажа техники</div><h2>${item.name}</h2><p>Собственную технику можно продать за ${Math.round(saleRate * 100)}% исходной цены. Техника будет снята с объекта, если назначена.</p><dl class="cost-list"><div><dt>Исходная цена</dt><dd>${money(item.price)}</dd></div><div><dt>Цена продажи</dt><dd class="positive">${money(price)}</dd></div><div><dt>Потеря капитала</dt><dd class="negative">−${money(item.price - price)}</dd></div></dl><div class="button-row modal-actions"><button class="btn btn-secondary" data-action="close-modal">Отмена</button><button class="btn btn-danger" data-action="confirm-sell-equipment" data-id="${asset.assetId}">Продать</button></div>`)
+    this.openModal(`<div class="modal-icon warning">${icon('equipment')}</div><div class="eyebrow">Selling equipment</div><h2>${item.name}</h2><p>Owned equipment can be sold for ${Math.round(saleRate * 100)}% of its original price. Equipment will be removed from the project if assigned.</p><dl class="cost-list"><div><dt>Original price</dt><dd>${money(item.price)}</dd></div><div><dt>Sale price</dt><dd class="positive">${money(price)}</dd></div><div><dt>Capital loss</dt><dd class="negative">−${money(item.price - price)}</dd></div></dl><div class="button-row modal-actions"><button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-danger" data-action="confirm-sell-equipment" data-id="${asset.assetId}">Sell</button></div>`)
   }
 
   private showEvent(): void {
@@ -596,7 +596,7 @@ this.notify(result.message, result.ok ? 'success' : 'error')
       const cost = option.effect.cash ?? 0
       const poor = cost < 0 && (isDebtBlocked(state) || state.money - (-cost) < -overdraftLimit(state))
       const disabled = repLocked || poor
-      const hint = repLocked ? `Нужна репутация ${option.requiresReputation}` : poor ? 'Недостаточно средств' : option.hint ?? ''
+      const hint = repLocked ? `Requires ${option.requiresReputation} reputation` : poor ? 'Not enough funds' : option.hint ?? ''
       return `<div class="event-option"><button class="btn btn-primary btn-block" data-action="event-option" data-id="${def.id}:${index}" ${disabled ? 'disabled' : ''}>${esc(option.label)}</button>${hint ? `<span class="event-effect">${esc(hint)}</span>` : ''}</div>`
     }).join('')
     this.openModal(`<div class="event-modal">
@@ -616,6 +616,6 @@ this.notify(result.message, result.ok ? 'success' : 'error')
     if (!notice) return
     this.state!.paused = true
     this.render()
-    this.openModal(`<div class="modal-icon ${notice.success ? 'success' : 'warning'}">${icon(notice.success ? 'star' : 'alert')}</div><div class="eyebrow">Итог сезона</div><h2>${notice.title}</h2><p>${notice.text}</p>${notice.final ? `<p>Компания прошла все десять сезонов. Можно продолжать игру в свободном режиме.</p>` : ''}<div class="goal-modal-stats">${badge(compactMoney(netWorth(this.state!)), notice.success ? 'success' : 'warning')}${badge(`${this.state!.reputation} репутации`, 'info')}</div><button class="btn btn-primary btn-block" data-action="acknowledge-season">Начать следующий сезон ${icon('arrow')}</button>`)
+    this.openModal(`<div class="modal-icon ${notice.success ? 'success' : 'warning'}">${icon(notice.success ? 'star' : 'alert')}</div><div class="eyebrow">Season summary</div><h2>${notice.title}</h2><p>${notice.text}</p>${notice.final ? `<p>The company completed all ten seasons. You may continue in free mode.</p>` : ''}<div class="goal-modal-stats">${badge(compactMoney(netWorth(this.state!)), notice.success ? 'success' : 'warning')}${badge(`${this.state!.reputation} reputation`, 'info')}</div><button class="btn btn-primary btn-block" data-action="acknowledge-season">Start next season ${icon('arrow')}</button>`)
   }
 }

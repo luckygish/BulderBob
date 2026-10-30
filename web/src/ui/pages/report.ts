@@ -27,7 +27,7 @@ function dayTickIndexes(count: number): number[] {
 }
 
 function lineChart(history: FinanceSnapshot[], keys: { key: 'capital' | 'cash' | 'reputation'; label: string; className: string }[]): string {
-  if (history.length < 2) return `<div class="chart-empty">${icon('trend')}<strong>Недостаточно данных</strong><span>График появится после нескольких игровых дней.</span></div>`
+  if (history.length < 2) return `<div class="chart-empty">${icon('trend')}<strong>Not enough data</strong><span>The chart appears after a few in-game days.</span></div>`
   const width = 660
   const height = 250
   const padTop = 18
@@ -59,7 +59,7 @@ function lineChart(history: FinanceSnapshot[], keys: { key: 'capital' | 'cash' |
   const xStep = plotW / Math.max(1, history.length - 1)
   const xGrid = dayTickIndexes(history.length).map((index) => {
     const x = padLeft + index * xStep
-    return `<line class="chart-grid" x1="${x}" y1="${height - padBottom}" x2="${x}" y2="${height - padBottom + 4}"/><text class="chart-label" x="${x}" y="${height - padBottom + 18}" text-anchor="middle">День ${history[index].day}</text>`
+    return `<line class="chart-grid" x1="${x}" y1="${height - padBottom}" x2="${x}" y2="${height - padBottom + 4}"/><text class="chart-label" x="${x}" y="${height - padBottom + 18}" text-anchor="middle">Day ${history[index].day}</text>`
   }).join('')
   const lines = keys.map(({ key, className }) => {
     const points = history.map((item, index) => `${padLeft + index * xStep},${padTop + (1 - (item[key] - min) / (top - min)) * plotH}`).join(' ')
@@ -69,7 +69,7 @@ function lineChart(history: FinanceSnapshot[], keys: { key: 'capital' | 'cash' |
 }
 
 function projectBars(projects: Project[]): string {
-  if (!projects.length) return `<div class="chart-empty">${icon('construction')}<strong>Объектов пока нет</strong><span>После первой сдачи здесь появится диаграмма.</span></div>`
+  if (!projects.length) return `<div class="chart-empty">${icon('construction')}<strong>No projects yet</strong><span>The chart appears after the first delivery.</span></div>`
   const items = projects.slice(0, 10).reverse()
   const values = items.map((project) => Math.max(0, project.job.budget - project.penalty))
   const max = Math.max(...values, 1)
@@ -77,12 +77,12 @@ function projectBars(projects: Project[]): string {
   return `<div class="bar-scale-label"><span>100% = ${compactMoney(max)}</span></div><div class="bar-chart"><div class="bar-guides" aria-hidden="true">${guides}</div>${items.map((project, index) => {
     const revenue = values[index]
     const profit = project.profit
-    return `<div class="bar-item" title="${buildingById(project.job.building).name}: выручка ${money(revenue)}, прибыль ${money(profit)}"><span class="bar-value">${compactMoney(revenue)}</span><div class="bar-columns"><span class="bar revenue" style="height:${Math.max(4, revenue / max * 130)}px"></span><span class="bar profit ${profit >= 0 ? 'positive' : 'negative'}" style="height:${Math.max(4, Math.abs(profit) / max * 130)}px"></span></div><small>${buildingById(project.job.building).short}</small></div>`
+    return `<div class="bar-item" title="${buildingById(project.job.building).name}: revenue ${money(revenue)}, profit ${money(profit)}"><span class="bar-value">${compactMoney(revenue)}</span><div class="bar-columns"><span class="bar revenue" style="height:${Math.max(4, revenue / max * 130)}px"></span><span class="bar profit ${profit >= 0 ? 'positive' : 'negative'}" style="height:${Math.max(4, Math.abs(profit) / max * 130)}px"></span></div><small>${buildingById(project.job.building).short}</small></div>`
   }).join('')}</div>`
 }
 
 function costStructure(projects: Project[]): string {
-  if (!projects.length) return `<div class="chart-empty">${icon('document')}<strong>Нет завершённых проектов</strong><span>Структура затрат появится после сдачи.</span></div>`
+  if (!projects.length) return `<div class="chart-empty">${icon('document')}<strong>No completed projects</strong><span>The cost structure appears after a delivery.</span></div>`
   const totals = projects.reduce((sum, project) => ({
     material: sum.material + project.materialCost,
     labor: sum.labor + project.laborCost,
@@ -93,25 +93,25 @@ function costStructure(projects: Project[]): string {
   }), { material: 0, labor: 0, logistics: 0, equipment: 0, rent: 0, factoring: 0 })
   const total = Math.max(1, Object.values(totals).reduce((sum, value) => sum + value, 0))
   const parts = [
-    ['Материалы', totals.material, 'material'],
-    ['Труд', totals.labor, 'labor'],
-    ['Доставка', totals.logistics, 'logistics'],
-    ['Аренда', totals.rent, 'rent'],
-    ['Техника', totals.equipment - totals.rent, 'equipment'],
-    ['Факторинг', totals.factoring, 'factoring'],
+    ['Materials', totals.material, 'material'],
+    ['Labor', totals.labor, 'labor'],
+    ['Delivery', totals.logistics, 'logistics'],
+    ['Rent', totals.rent, 'rent'],
+    ['Equipment', totals.equipment - totals.rent, 'equipment'],
+    ['Factoring', totals.factoring, 'factoring'],
   ] as const
   return `<div class="cost-donut">${parts.map(([label, value, className]) => `<div class="cost-part ${className}"><span>${label}</span><b>${money(value)}</b><strong>${percent(Math.max(0, value) / total)}</strong><div class="stock-bar"><span style="width:${Math.max(0, value) / total * 100}%"></span></div></div>`).join('')}</div>`
 }
 
 function buildingStats(projects: Project[]): string {
-  if (!projects.length) return `<div class="chart-empty">${icon('jobs')}<strong>Нет сданных объектов</strong><span>Статистика появится после первой сдачи.</span></div>`
+  if (!projects.length) return `<div class="chart-empty">${icon('jobs')}<strong>No delivered projects</strong><span>Statistics appear after the first delivery.</span></div>`
   const counts = new Map<string, number>()
   for (const project of projects) counts.set(project.job.building, (counts.get(project.job.building) ?? 0) + 1)
-  return `<div class="type-stats">${[...counts.entries()].map(([building, count]) => `<div><span class="building-mark">${buildingById(building).short}</span><div><strong>${buildingById(building).name}</strong><small>${count} шт.</small></div></div>`).join('')}</div>`
+  return `<div class="type-stats">${[...counts.entries()].map(([building, count]) => `<div><span class="building-mark">${buildingById(building).short}</span><div><strong>${buildingById(building).name}</strong><small>${count} units</small></div></div>`).join('')}</div>`
 }
 
 function buildingMarginStats(projects: Project[]): string {
-  if (!projects.length) return `<div class="chart-empty">${icon('jobs')}<strong>Нет сданных объектов</strong><span>Доходность по типам появится после первой сдачи.</span></div>`
+  if (!projects.length) return `<div class="chart-empty">${icon('jobs')}<strong>No delivered projects</strong><span>Profitability by type appears after the first delivery.</span></div>`
   const rows = new Map<string, { count: number; revenue: number; profit: number }>()
   for (const project of projects) {
     const entry = rows.get(project.job.building) ?? { count: 0, revenue: 0, profit: 0 }
@@ -121,18 +121,18 @@ function buildingMarginStats(projects: Project[]): string {
     rows.set(project.job.building, entry)
   }
   const sorted = [...rows.entries()].sort((a, b) => b[1].profit - a[1].profit)
-  const head = `<div class="margin-stat margin-head"><span></span><span></span><span>Выручка</span><span>Прибыль</span><span>Маржа</span></div>`
+  const head = `<div class="margin-stat margin-head"><span></span><span></span><span>Revenue</span><span>Profit</span><span>Margin</span></div>`
   const body = sorted.map(([id, row]) => {
     const def = buildingById(id)
     const margin = row.revenue > 0 ? row.profit / row.revenue : 0
-    return `<div class="margin-stat"><span class="building-mark">${def.short}</span><div class="margin-name"><strong>${def.name}</strong><small>${row.count} шт.</small></div><span class="margin-value">${compactMoney(row.revenue)}</span><span class="margin-value ${row.profit >= 0 ? 'positive' : 'negative'}">${compactMoney(row.profit)}</span><strong class="margin-pct ${row.profit >= 0 ? 'positive' : 'negative'}">${percent(margin)}</strong></div>`
+    return `<div class="margin-stat"><span class="building-mark">${def.short}</span><div class="margin-name"><strong>${def.name}</strong><small>${row.count} units</small></div><span class="margin-value">${compactMoney(row.revenue)}</span><span class="margin-value ${row.profit >= 0 ? 'positive' : 'negative'}">${compactMoney(row.profit)}</span><strong class="margin-pct ${row.profit >= 0 ? 'positive' : 'negative'}">${percent(margin)}</strong></div>`
   }).join('')
   return `<div class="margin-stats">${head}${body}</div>`
 }
 
 function priceChart(history: GameState['priceHistory']): string {
   const depth = Math.max(0, ...Object.values(history).map((values) => values.length))
-  if (depth < 2) return `<div class="chart-empty">${icon('trend')}<strong>Недостаточно данных</strong><span>График цен появится после нескольких пересчётов рынка.</span></div>`
+  if (depth < 2) return `<div class="chart-empty">${icon('trend')}<strong>Not enough data</strong><span>The price chart appears after a few market recalculations.</span></div>`
   const width = 660
   const height = 250
   const padTop = 18
@@ -166,7 +166,7 @@ function priceChart(history: GameState['priceHistory']): string {
   for (let index = 0; index < total; index += 1) xIndexes.push(Math.round(((depth - 1) * index) / (total - 1)))
   const xGrid = xIndexes.map((index) => {
     const x = padLeft + index * xStep
-    return `<line class="chart-grid" x1="${x}" y1="${height - padBottom}" x2="${x}" y2="${height - padBottom + 4}"/><text class="chart-label" x="${x}" y="${height - padBottom + 18}" text-anchor="middle">Замер №${index + 1}</text>`
+    return `<line class="chart-grid" x1="${x}" y1="${height - padBottom}" x2="${x}" y2="${height - padBottom + 4}"/><text class="chart-label" x="${x}" y="${height - padBottom + 18}" text-anchor="middle">Sample #${index + 1}</text>`
   }).join('')
   const lines = MATERIALS.map((material) => {
     const values = history[material.id]
@@ -190,27 +190,27 @@ function financeStats(state: GameState) {
 
 export function renderReport(ctx: ViewContext): string {
   const { state } = ctx
-  if (!isResearched(state, 'bank_account')) return `${pageHeading('Аналитика', 'Финансовый отчёт', 'История капитала, прибыли и структуры затрат компании.', badge('Закрыто', 'neutral'))}<section class="card bank-locked"><div class="empty-icon">${icon('report')}</div><div><div class="eyebrow">Финансовая аналитика</div><h2>Откройте расчётный счёт</h2><p>После исследования «Банковский счёт» здесь будут графики капитала, денег, репутации, прибыли и структуры затрат.</p><button class="btn btn-primary" data-route="technology">Перейти к технологиям ${icon('arrow')}</button></div></section>`
+  if (!isResearched(state, 'bank_account')) return `${pageHeading('Analytics', 'Financial report', 'History of capital, profit and the company cost structure.', badge('Closed', 'neutral'))}<section class="card bank-locked"><div class="empty-icon">${icon('report')}</div><div><div class="eyebrow">Financial analytics</div><h2>Open a current account</h2><p>After researching "Bank account", capital, cash, reputation, profit and cost structure charts will appear here.</p><button class="btn btn-primary" data-route="technology">Go to Technologies ${icon('arrow')}</button></div></section>`
   const season = currentSeason(state)
   const status = companyStatus(state)
   const stats = financeStats(state)
   const direct = state.completed.reduce((sum, project) => sum + projectCosts(project).direct, 0)
-  return `${pageHeading('Аналитика компании', 'Финансовый отчёт', 'История капитала, денег, репутации и результатов сданных объектов.', badge(`${state.financeHistory.length} дн. истории`, 'info'))}
+  return `${pageHeading('Company analytics', 'Financial report', 'History of capital, cash, reputation and delivered project results.', badge(`${state.financeHistory.length} days of history`, 'info'))}
     <section class="kpi-grid report-kpis">
-      <article class="kpi-card"><div class="kpi-icon orange">${icon('wallet')}</div><div><span>Капитал</span><strong>${compactMoney(netWorth(state))}</strong><small>Деньги и техника минус обязательства</small></div></article>
-      <article class="kpi-card"><div class="kpi-icon teal">${icon('trend')}</div><div><span>Выручка за сезон</span><strong>${compactMoney(state.seasonRevenue)}</strong><small>За всю игру: ${compactMoney(stats.revenue)}</small></div></article>
-      <article class="kpi-card"><div class="kpi-icon blue">${icon('document')}</div><div><span>Средняя маржа</span><strong>${percent(stats.margin)}</strong><small>Прибыль / выручка сданных объектов</small></div></article>
-      <article class="kpi-card"><div class="kpi-icon sand">${icon('star')}</div><div><span>Текущий долг</span><strong>${money(Math.max(0, state.debt))}</strong><small>${state.debt > 0 ? 'Требует контроля' : 'Обязательств нет'}</small></div></article>
+      <article class="kpi-card"><div class="kpi-icon orange">${icon('wallet')}</div><div><span>Capital</span><strong>${compactMoney(netWorth(state))}</strong><small>Cash and equipment minus liabilities</small></div></article>
+      <article class="kpi-card"><div class="kpi-icon teal">${icon('trend')}</div><div><span>Season revenue</span><strong>${compactMoney(state.seasonRevenue)}</strong><small>All-time: ${compactMoney(stats.revenue)}</small></div></article>
+      <article class="kpi-card"><div class="kpi-icon blue">${icon('document')}</div><div><span>Average margin</span><strong>${percent(stats.margin)}</strong><small>Profit / revenue of delivered projects</small></div></article>
+      <article class="kpi-card"><div class="kpi-icon sand">${icon('star')}</div><div><span>Current debt</span><strong>${money(Math.max(0, state.debt))}</strong><small>${state.debt > 0 ? 'Needs attention' : 'No liabilities'}</small></div></article>
     </section>
     <div class="report-grid">
-      <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Динамика</div><h2>Капитал и денежные средства</h2></div></div>${lineChart(state.financeHistory, [{ key: 'capital', label: 'Капитал', className: 'capital' }, { key: 'cash', label: 'Деньги', className: 'cash' }])}<div class="chart-legend"><span><i class="legend-dot capital"></i>Капитал</span><span><i class="legend-dot cash"></i>Деньги</span></div></section>
-      <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Рынок</div><h2>Цены на материалы</h2></div></div>${priceChart(state.priceHistory)}<div class="chart-legend price-legend">${MATERIALS.map((material) => `<span><i class="legend-dot price-${material.id}"></i>${material.name}</span>`).join('')}</div></section>
-      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Репутация</div><h2>Динамика доверия</h2></div></div>${lineChart(state.financeHistory, [{ key: 'reputation', label: 'Репутация', className: 'reputation' }])}</section>
-      <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Сданные объекты</div><h2>Выручка и прибыль</h2></div>${badge('последние 10', 'info')}</div>${projectBars(state.completed)}<div class="chart-legend"><span><i class="legend-dot revenue"></i>Выручка</span><span><i class="legend-dot profit"></i>Прибыль</span></div></section>
-      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Затраты</div><h2>Структура расходов</h2></div></div>${costStructure(state.completed)}<p class="field-hint">Всего прямых затрат: ${money(direct)}</p></section>
-      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Портфель</div><h2>Типы объектов</h2></div></div>${buildingStats(state.completed)}</section>
-      <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Доходность</div><h2>Прибыль по типам объектов</h2></div>${badge('за всё время', 'info')}</div>${buildingMarginStats(state.completed)}</section>
-      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Сезон</div><h2>${season.name}</h2></div>${badge(seasonGoalMet(state) ? 'цель выполнена' : `день ${state.day}/${BALANCE.seasonDays}`, seasonGoalMet(state) ? 'success' : 'info')}</div><p>${seasonEffectText(state) || 'Особых условий нет'}</p>${progress(capitalProgress(state), 'Капитал')}${progress(state.reputation / season.goal.reputation, 'Репутация')}${progress(state.seasonCompleted / season.goal.completed, 'Объекты')}</section>
-      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Компания</div><h2>${status.name}</h2></div></div>${progress(status.progress, 'До следующего статуса')}<dl class="cost-list"><div><dt>Лучший объект</dt><dd>${stats.best ? `${buildingById(stats.best.job.building).name} · ${money(stats.best.profit)}` : '—'}</dd></div><div><dt>Просроченных сдач</dt><dd>${stats.late}</dd></div><div><dt>Техника</dt><dd>${state.equipment.length} ед.</dd></div><div><dt>Обслуживание</dt><dd>${money(equipmentMaintenance(state) + warehouseStorageFee(state))} / день</dd></div><div><dt>Сумма продаж техники</dt><dd>${state.equipmentSold} ед.</dd></div></dl></section>
+      <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Dynamics</div><h2>Capital and cash</h2></div></div>${lineChart(state.financeHistory, [{ key: 'capital', label: 'Capital', className: 'capital' }, { key: 'cash', label: 'Cash', className: 'cash' }])}<div class="chart-legend"><span><i class="legend-dot capital"></i>Capital</span><span><i class="legend-dot cash"></i>Cash</span></div></section>
+      <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Market</div><h2>Material prices</h2></div></div>${priceChart(state.priceHistory)}<div class="chart-legend price-legend">${MATERIALS.map((material) => `<span><i class="legend-dot price-${material.id}"></i>${material.name}</span>`).join('')}</div></section>
+      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Reputation</div><h2>Trust dynamics</h2></div></div>${lineChart(state.financeHistory, [{ key: 'reputation', label: 'Reputation', className: 'reputation' }])}</section>
+      <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Delivered projects</div><h2>Revenue and profit</h2></div>${badge('last 10', 'info')}</div>${projectBars(state.completed)}<div class="chart-legend"><span><i class="legend-dot revenue"></i>Revenue</span><span><i class="legend-dot profit"></i>Profit</span></div></section>
+      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Costs</div><h2>Cost structure</h2></div></div>${costStructure(state.completed)}<p class="field-hint">Total direct costs: ${money(direct)}</p></section>
+      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Portfolio</div><h2>Project types</h2></div></div>${buildingStats(state.completed)}</section>
+      <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Profitability</div><h2>Profit by project type</h2></div>${badge('all-time', 'info')}</div>${buildingMarginStats(state.completed)}</section>
+      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Season</div><h2>${season.name}</h2></div>${badge(seasonGoalMet(state) ? 'goal met' : `day ${state.day}/${BALANCE.seasonDays}`, seasonGoalMet(state) ? 'success' : 'info')}</div><p>${seasonEffectText(state) || 'No special conditions'}</p>${progress(capitalProgress(state), 'Capital')}${progress(state.reputation / season.goal.reputation, 'Reputation')}${progress(state.seasonCompleted / season.goal.completed, 'Projects')}</section>
+      <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Company</div><h2>${status.name}</h2></div></div>${progress(status.progress, 'To next status')}<dl class="cost-list"><div><dt>Best project</dt><dd>${stats.best ? `${buildingById(stats.best.job.building).name} · ${money(stats.best.profit)}` : '—'}</dd></div><div><dt>Late deliveries</dt><dd>${stats.late}</dd></div><div><dt>Equipment</dt><dd>${state.equipment.length} units</dd></div><div><dt>Maintenance</dt><dd>${money(equipmentMaintenance(state) + warehouseStorageFee(state))} / day</dd></div><div><dt>Equipment sold</dt><dd>${state.equipmentSold} units</dd></div></dl></section>
     </div>`
 }

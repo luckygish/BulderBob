@@ -148,7 +148,7 @@ describe('лицензии', () => {
     lowReputation.reputation = 60
     const blocked = startResearch(lowReputation, 'city_license')
     assert.equal(blocked.ok, false)
-    assert.ok(blocked.message.includes('репутац'), blocked.message)
+    assert.ok(blocked.message.includes('reputation'), blocked.message)
 
     lowReputation.reputation = 75
     const started = startResearch(lowReputation, 'city_license')
@@ -160,7 +160,7 @@ describe('лицензии', () => {
     lowCapital.reputation = 90
     const blockedCapital = startResearch(lowCapital, 'city_license')
     assert.equal(blockedCapital.ok, false)
-    assert.ok(blockedCapital.message.includes('капитал'), blockedCapital.message)
+    assert.ok(blockedCapital.message.includes('capital'), blockedCapital.message)
   })
 })
 

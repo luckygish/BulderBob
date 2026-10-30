@@ -26,7 +26,7 @@ export function createNewGame(seed = Date.now()): GameState {
     provisions: Object.fromEntries(PROVISIONS.map((p) => [p.id, 0])) as GameState['provisions'],
     research: {}, loan: null, bots: [], journal: [], totalRevenue: 0,
     seasonIndex: 0, seasonCompleted: 0, seasonRevenue: 0, completedTutorial: [], equipmentSold: 0, usedSuppliers: [], seasonNotice: null,
-    companyName: 'Ваша компания', companyAvatar: 0, financeHistory: [], event: null, eventsFired: [], seasonPriceBonus: 0, seasonDeadlineBonus: 0, seasonWageBonus: 0, corpFinalChoice: null,
+    companyName: 'Your company', companyAvatar: 0, financeHistory: [], event: null, eventsFired: [], seasonPriceBonus: 0, seasonDeadlineBonus: 0, seasonWageBonus: 0, corpFinalChoice: null,
   }
   for (const supplier of ['north', 'south'] as SupplierId[]) {
     for (const material of MATERIALS) {
@@ -39,14 +39,14 @@ export function createNewGame(seed = Date.now()): GameState {
   state.jobs.push(createJob(state))
   state.jobs.push(createJob(state))
   state.bots = [
-    createBot(state, 'СтройГрад', 'aggressive'),
-    createBot(state, 'ДомМастер', 'moderate'),
-    createBot(state, 'АтлантСтрой', 'conservative'),
+    createBot(state, 'BuildCity', 'aggressive'),
+    createBot(state, 'HomeMaster', 'moderate'),
+    createBot(state, 'AtlasBuild', 'conservative'),
   ]
   const initialCandidates = BALANCE.minCandidates + state.bots.reduce((sum, bot) => sum + bot.crewTarget, 0)
   if (state.candidates.length < initialCandidates) generateWorkers(state, initialCandidates - state.candidates.length)
   recordFinanceSnapshot(state)
-  addLog(state, 'Компания открыта. Первый заказ уже ждёт на доске.', 'success')
+  addLog(state, 'Company opened. The first order is already waiting on the board.', 'success')
   return state
 }
 
@@ -61,7 +61,7 @@ function createCorpBot(state: GameState): Bot {
 export function ensureCorpBot(state: GameState): void {
   if (state.seasonIndex < BALANCE.corpSeason || state.bots.some((bot) => bot.corporation)) return
   state.bots.push(createCorpBot(state))
-  addLog(state, `Корпорация «${BALANCE.corpName}» выходит на рынок.`, 'warning')
+  addLog(state, `Corporation ${BALANCE.corpName} enters the market.`, 'warning')
 }
 
 export function makeStages(building: Job['building']): StageState[] {
@@ -257,7 +257,7 @@ export function storeWarehouseCapped(state: GameState, material: MaterialId, qty
   if (sold > 0) {
     const income = Math.round(sold * unitCost * BALANCE.warehouseSaleRate)
     state.money += income
-    addLog(state, `Отгрузка на склад сверх лимита продана по ${Math.round(BALANCE.warehouseSaleRate * 100)}% себестоимости: ${materialById(material).name}, ${sold} ${materialById(material).unit} за ${income.toLocaleString('ru-RU')} ₽.`, 'warning')
+    addLog(state, `Warehouse overflow sold at ${Math.round(BALANCE.warehouseSaleRate * 100)}% of cost: ${materialById(material).name}, ${sold} ${materialById(material).unit} for $${income.toLocaleString('en-US')}.`, 'warning')
   }
   return { stored, sold }
 }
@@ -300,19 +300,19 @@ export function chargeObligation(state: GameState, amount: number, label: string
   const unpaid = rounded - paid
   if (unpaid > 0) {
     state.debt += unpaid
-    if (isDebtBlocked(state)) addLog(state, `${label}: не хватает ${unpaid.toLocaleString('ru-RU')} ₽. Работа остановлена до погашения долга.`, 'warning')
-    else addLog(state, `${label}: ${unpaid.toLocaleString('ru-RU')} ₽ покрыто овердрафтом.`, 'warning')
+    if (isDebtBlocked(state)) addLog(state, `${label}: $${unpaid.toLocaleString('en-US')} short — work halted until the debt is repaid.`, 'warning')
+    else addLog(state, `${label}: $${unpaid.toLocaleString('en-US')} covered by overdraft.`, 'warning')
   }
 }
 
 export function purchaseMaterial(state: GameState, material: MaterialId, quantity: number, supplier: SupplierId, projectId?: string, feeMultiplier = 1): ActionResult {
-  if (isDebtBlocked(state)) return { ok: false, message: 'Сначала погасите обязательства.' }
+  if (isDebtBlocked(state)) return { ok: false, message: 'Repay your obligations first.' }
   const quote = quoteMaterial(state, material, quantity, supplier)
   const actualFee = Math.round(quote.fee * feeMultiplier)
-  if (quantity <= 0 || quote.qty !== quantity) return { ok: false, message: 'На базе недостаточно материала.' }
+  if (quantity <= 0 || quote.qty !== quantity) return { ok: false, message: 'Not enough material at the yard.' }
   const project = projectId ? state.projects.find((item) => item.id === projectId) : undefined
-  if (!project && quantity > warehouseSpace(state, material)) return { ok: false, message: `Склад не вмещает ${quantity} ед. «${materialById(material).name}» (потолок ${BALANCE.warehouseCap}).` }
-  if (!spend(state, quote.cost + actualFee)) return { ok: false, message: 'Недостаточно денег для закупки и доставки.' }
+  if (!project && quantity > warehouseSpace(state, material)) return { ok: false, message: `Warehouse doesn't fit ${quantity} units of "${materialById(material).name}" (cap ${BALANCE.warehouseCap}).` }
+  if (!spend(state, quote.cost + actualFee)) return { ok: false, message: 'Not enough money for purchase and delivery.' }
   const stockBefore = quote.available
   deductLots(state, material, supplier, quantity)
   const share = stockBefore > 0 ? quantity / stockBefore : 0
@@ -335,8 +335,8 @@ export function purchaseMaterial(state: GameState, material: MaterialId, quantit
   } else {
     state.deliveries.push({ id: nextId(state, 'delivery'), supplier, arriveDay: quote.arriveDay, items: [{ material, qty: quantity, unitCost }], fee: actualFee, projectId: project?.id })
   }
-  addLog(state, `Куплено: ${materialById(material).name}, ${quantity} ${materialById(material).unit} · ${(quote.cost + actualFee).toLocaleString('ru-RU')} ₽.`, 'money')
-  return { ok: true, message: quote.arriveDay === state.day ? (project ? 'Материалы зарезервированы за объектом.' : 'Материалы уже на складе.') : `Поставка прибудет на день ${quote.arriveDay}.` }
+  addLog(state, `Bought: ${materialById(material).name}, ${quantity} ${materialById(material).unit} · $${(quote.cost + actualFee).toLocaleString('en-US')}.`, 'money')
+  return { ok: true, message: quote.arriveDay === state.day ? (project ? 'Materials reserved for the project.' : 'Materials are already in the warehouse.') : `Delivery arrives on day ${quote.arriveDay}.` }
 }
 
 export function takeFromInventory(state: GameState, material: MaterialId, quantity: number): { qty: number; cost: number } {
@@ -440,22 +440,22 @@ export function projectEquipmentBonus(state: GameState, project: Project): numbe
 }
 
 export function startStage(state: GameState, project: Project): ActionResult {
-  if (isDebtBlocked(state)) return { ok: false, message: 'Стройка остановлена: погасите обязательства.' }
-  if (project.currentStage >= project.stages.length) return { ok: false, message: 'Все этапы завершены.' }
-  if (project.stages[project.currentStage].status === 'in_progress') return { ok: false, message: 'Этап уже строится.' }
-  if (!projectCrewsReady(state, project)) return { ok: false, message: requiredCrews(project) > 1 ? 'Назначьте две непустые бригады.' : 'Назначьте непустую бригаду.' }
+  if (isDebtBlocked(state)) return { ok: false, message: 'Construction halted: repay your obligations.' }
+  if (project.currentStage >= project.stages.length) return { ok: false, message: 'All stages are complete.' }
+  if (project.stages[project.currentStage].status === 'in_progress') return { ok: false, message: 'Stage is already under construction.' }
+  if (!projectCrewsReady(state, project)) return { ok: false, message: requiredCrews(project) > 1 ? 'Assign two non-empty crews.' : 'Assign a non-empty crew.' }
   if (!projectEquipmentReady(state, project)) {
     const stage = buildingById(project.job.building).stages[project.currentStage]
-    return { ok: false, message: `Назначьте технику: ${stage.requiredEquipment?.map((id) => equipmentById(id).name).join(' или ')}.` }
+    return { ok: false, message: `Assign equipment: ${stage.requiredEquipment?.map((id) => equipmentById(id).name).join(' or ')}.` }
   }
-  if (!hasProvisions(state)) return { ok: false, message: 'Купите отдельный комплект обеспечения для каждого активного объекта.' }
+  if (!hasProvisions(state)) return { ok: false, message: 'Buy a separate provisions set for each active project.' }
   allocateStage(state, project, project.currentStage)
-  if (!hasStageMaterials(project, project.currentStage)) return { ok: false, message: 'Сначала обеспечьте этап материалами.' }
+  if (!hasStageMaterials(project, project.currentStage)) return { ok: false, message: 'First supply the stage with materials.' }
   project.stages[project.currentStage].status = 'in_progress'
   project.stages[project.currentStage].progress = 0
   project.started = true
-  addLog(state, `${buildingById(project.job.building).name}: начат этап «${buildingById(project.job.building).stages[project.currentStage].name}».`)
-  return { ok: true, message: 'Этап запущен.' }
+  addLog(state, `${buildingById(project.job.building).name}: started stage "${buildingById(project.job.building).stages[project.currentStage].name}".`)
+  return { ok: true, message: 'Stage started.' }
 }
 
 function canWorkNow(state: GameState, project: Project): boolean {
@@ -494,7 +494,7 @@ function processProjectHour(state: GameState, project: Project): void {
   if (asset?.status === 'rented' && asset.hoursRemaining <= 0) {
     state.equipment = state.equipment.filter((item) => item !== asset)
     project.equipmentAssetId = null
-    addLog(state, `Аренда ${equipmentById(asset.id).name} завершена.`, 'warning')
+    addLog(state, `Rental of ${equipmentById(asset.id).name} ended.`, 'warning')
   }
   if (project.stages[project.currentStage].progress < 1) return
   project.stages[project.currentStage].progress = 1
@@ -504,7 +504,7 @@ function processProjectHour(state: GameState, project: Project): void {
     completeProject(state, project)
     return
   }
-  addLog(state, `${buildingById(project.job.building).name}: этап «${stageDef.name}» завершён.`, 'success')
+  addLog(state, `${buildingById(project.job.building).name}: stage "${stageDef.name}" completed.`, 'success')
   if (project.autoAdvance) startStage(state, project)
 }
 
@@ -517,7 +517,7 @@ function returnReservedMaterials(state: GameState, project: Project): void {
 
 function completeProject(state: GameState, project: Project): void {
   const unpaidWages = Math.max(0, project.laborCost - project.laborPaid)
-  if (unpaidWages > 0) chargeObligation(state, unpaidWages, 'Расчёт с бригадой')
+  if (unpaidWages > 0) chargeObligation(state, unpaidWages, 'Crew settlement')
   project.laborPaid = project.laborCost
   const lateDays = Math.max(0, state.day - project.job.deadline)
   project.penalty = Math.round(project.job.budget * Math.min(BALANCE.latePenaltyCap, lateDays * BALANCE.latePenaltyPerDay))
@@ -541,7 +541,7 @@ function completeProject(state: GameState, project: Project): void {
   if (nextProject) {
     for (const crewId of project.crewIds) if (nextProject.crewIds.length < requiredCrews(nextProject)) nextProject.crewIds.push(crewId)
   }
-  addLog(state, `Объект сдан: ${def.name}. Прибыль ${project.profit.toLocaleString('ru-RU')} ₽${lateDays ? `, штраф ${project.penalty.toLocaleString('ru-RU')} ₽` : ''}.`, lateDays ? 'warning' : 'success')
+  addLog(state, `Project delivered: ${def.name}. Profit $${project.profit.toLocaleString('en-US')}${lateDays ? `, penalty $${project.penalty.toLocaleString('en-US')}` : ''}.`, lateDays ? 'warning' : 'success')
 }
 
 function arriveDeliveries(state: GameState): void {
@@ -552,7 +552,7 @@ function arriveDeliveries(state: GameState): void {
       if (project) addProjectInventory(project, item.material, item.qty, item.unitCost)
       else storeWarehouseCapped(state, item.material, item.qty, item.unitCost)
     }
-    addLog(state, `Поставка с базы «${SUPPLIERS[delivery.supplier].name}» принята${project ? ' в резерв объекта' : ' на склад'}.`, 'success')
+    addLog(state, `Delivery from "${SUPPLIERS[delivery.supplier].name}" received${project ? ' into project reserve' : ' at warehouse'}.`, 'success')
   }
   state.deliveries = state.deliveries.filter((delivery) => delivery.arriveDay > state.day)
 }
@@ -564,45 +564,45 @@ function settleDailyObligations(state: GameState): void {
     const payment = Math.min(available, state.debt)
     state.money -= payment
     state.debt -= payment
-    if (state.debt === 0) addLog(state, 'Обязательства погашены, компания продолжает работу.', 'success')
+    if (state.debt === 0) addLog(state, 'Obligations repaid, the company continues working.', 'success')
   }
   for (const project of state.projects) {
     const wages = Math.max(0, project.laborCost - project.laborPaid)
     if (wages > 0) {
-      chargeObligation(state, wages, `Зарплата · ${buildingById(project.job.building).name}`)
+      chargeObligation(state, wages, `Wages · ${buildingById(project.job.building).name}`)
       project.laborPaid = project.laborCost
     }
   }
   if (state.loan) {
     const payment = Math.min(state.loan.daily, state.loan.remaining)
-    chargeObligation(state, payment, 'Платёж по кредиту')
+    chargeObligation(state, payment, 'Loan payment')
     state.loan.remaining -= payment
     if (state.loan.remaining <= 0) {
       state.loan = null
-      addLog(state, 'Кредит полностью погашен.', 'success')
+      addLog(state, 'Loan fully repaid.', 'success')
     }
   }
   for (const asset of [...state.equipment]) {
     const project = state.projects.find((item) => item.id === asset.projectId)
     if (asset.status === 'leased') {
       const payment = Math.min(asset.leaseDaily, asset.leaseRemaining)
-      chargeObligation(state, payment, `Лизинг · ${equipmentById(asset.id).name}`)
+      chargeObligation(state, payment, `Lease · ${equipmentById(asset.id).name}`)
       if (project) project.equipmentCost += payment
       asset.leaseRemaining -= payment
       if (asset.leaseRemaining <= 0) {
         asset.status = 'owned'
         asset.leaseDaily = 0
-        addLog(state, `${equipmentById(asset.id).name}: лизинг выплачен, техника теперь в собственности.`, 'success')
+        addLog(state, `${equipmentById(asset.id).name}: lease paid off, equipment is now owned.`, 'success')
       }
     }
     if (asset.status !== 'rented') {
       const maintenance = Math.max(1, Math.round(equipmentById(asset.id).price * seasonMaintenanceRate(state)))
-      chargeObligation(state, maintenance, `Обслуживание · ${equipmentById(asset.id).name}`)
+      chargeObligation(state, maintenance, `Maintenance · ${equipmentById(asset.id).name}`)
       if (project) project.equipmentCost += maintenance
     }
   }
   const storageFee = warehouseStorageFee(state)
-  if (storageFee > 0) chargeObligation(state, storageFee, 'Обслуживание · Склад')
+  if (storageFee > 0) chargeObligation(state, storageFee, 'Maintenance · Warehouse')
 }
 
 function processSupply(state: GameState): void {
@@ -702,7 +702,7 @@ function botPickJob(state: GameState, bot: Bot): void {
     const fee = Math.round(selected.job.budget * BALANCE.factoringFee)
     bot.money += advance - fee
   }
-  addLog(state, `${bot.name} взял заказ «${buildingById(selected.job.building).name}».`)
+  addLog(state, `${bot.name} took the contract "${buildingById(selected.job.building).name}".`)
 }
 
 function botStageReadyForBuild(project: BotProject, def: ReturnType<typeof buildingById>): boolean {
@@ -720,7 +720,7 @@ function deliverBotProject(state: GameState, bot: Bot, project: BotProject): voi
   bot.totalProfit += profit
   bot.jobsDone += 1
   bot.projects = bot.projects.filter((item) => item !== project)
-  addLog(state, `${bot.name} сдал объект «${buildingById(project.job.building).name}». Прибыль ${profit.toLocaleString('ru-RU')} ₽.`, 'info')
+  addLog(state, `${bot.name} delivered "${buildingById(project.job.building).name}". Profit $${profit.toLocaleString('en-US')}.`, 'info')
   if (bot.projects.length === 0) {
     state.candidates.push(...bot.crew)
     bot.crew = []
@@ -833,7 +833,7 @@ function dailyTick(state: GameState): void {
     if (!state.jobs.some((job) => job.special) && state.jobs.length < 5 && random(state) < BALANCE.specialJobChance) {
       const special = pick(state, BUILDINGS.filter((building) => building.special))
       state.jobs.push(createJob(state, special.id))
-      addLog(state, `На доске появился особый проект «${special.name}». Предложение ограничено.`, 'success')
+      addLog(state, `A special project "${special.name}" appeared on the board. Offer is limited.`, 'success')
     }
   }
   const researching = Object.entries(state.research).find(([, value]) => value.status === 'researching')
@@ -841,7 +841,7 @@ function dailyTick(state: GameState): void {
     researching[1].progress += 1
     if (researching[1].progress >= techById(researching[0]).days) {
       researching[1].status = 'done'
-      addLog(state, `Исследование завершено: ${techById(researching[0]).name}.`, 'success')
+      addLog(state, `Research completed: ${techById(researching[0]).name}.`, 'success')
     }
   }
   state.jobs = state.jobs.filter((job) => job.special ? state.day <= job.expiresDay : job.deadline - state.day >= 2)
@@ -853,7 +853,7 @@ function dailyTick(state: GameState): void {
     state.event = eventDef.id
     state.eventsFired.push(eventDef.id)
     state.paused = true
-    addLog(state, `Необычное событие: «${eventDef.title}».`, 'warning')
+    addLog(state, `Event: "${eventDef.title}".`, 'warning')
   }
   recordFinanceSnapshot(state)
 }
@@ -867,7 +867,7 @@ function transitionSeason(state: GameState): void {
   if (!final) state.seasonIndex += 1
   if (isResearched(state, 'reserve_fund')) {
     state.money += 500_000
-    addLog(state, 'Резервный фонд: +500 000 ₽ на новый сезон.', 'money')
+    addLog(state, 'Reserve fund: +$500,000 for the new season.', 'money')
   }
   for (const bot of state.bots) {
     if (state.seasonIndex >= 1 && !bot.corporation) bot.crewTarget = randomInt(state, BALANCE.botCrewMin, BALANCE.botCrewMax)
@@ -903,10 +903,10 @@ function transitionSeason(state: GameState): void {
   state.seasonNotice = {
     success,
     final: success && final,
-    title: success ? (final ? 'Финальный сезон выполнен' : 'Сезон выполнен') : 'Сезон провален',
+    title: success ? (final ? 'Final season completed' : 'Season completed') : 'Season failed',
     text: success
-      ? `«${season.name}» завершён успешно. Награда +${BALANCE.seasonSuccessReputation} репутации. Начинается «${currentSeason(state).name}».`
-      : `Цели сезона «${season.name}» не достигнуты. Штраф −${BALANCE.seasonFailReputation} репутации. Начинается «${currentSeason(state).name}».`,
+      ? `"${season.name}" completed successfully. Reward +${BALANCE.seasonSuccessReputation} reputation. Now starting: "${currentSeason(state).name}".`
+      : `Goals of "${season.name}" were not met. Penalty −${BALANCE.seasonFailReputation} reputation. Now starting: "${currentSeason(state).name}".`,
   }
   addLog(state, state.seasonNotice.text, success ? 'success' : 'warning')
   state.paused = true
@@ -930,55 +930,55 @@ export function netWorth(state: GameState): number {
 }
 
 export function repayDebt(state: GameState): ActionResult {
-  if (state.debt <= 0) return { ok: false, message: 'Текущих долгов нет.' }
+  if (state.debt <= 0) return { ok: false, message: 'No current debt.' }
   const payment = Math.min(Math.max(0, state.money), state.debt)
-  if (payment <= 0) return { ok: false, message: 'Недостаточно денег. Возможен кредит после исследования банковского счёта.' }
+  if (payment <= 0) return { ok: false, message: 'Not enough money. A loan becomes available after researching the bank account.' }
   state.money -= payment
   state.debt -= payment
-  return { ok: true, message: `Погашено ${payment.toLocaleString('ru-RU')} ₽.` }
+  return { ok: true, message: `Repaid $${payment.toLocaleString('en-US')}.` }
 }
 
 export function takeLoan(state: GameState, amount: number): ActionResult {
-  if (!isResearched(state, 'bank_account')) return { ok: false, message: 'Сначала исследуйте банковский счёт.' }
-  if (state.loan) return { ok: false, message: 'Одновременно доступен только один кредит.' }
+  if (!isResearched(state, 'bank_account')) return { ok: false, message: 'Research the bank account first.' }
+  if (state.loan) return { ok: false, message: 'Only one loan is available at a time.' }
   const option = LOAN_OPTIONS.find((item) => item.amount === amount)
-  if (!option) return { ok: false, message: 'Неизвестное предложение.' }
-  if (option.minReputation && state.reputation < option.minReputation) return { ok: false, message: `Для кредита ${amount.toLocaleString('ru-RU')} ₽ нужна репутация ${option.minReputation}.` }
+  if (!option) return { ok: false, message: 'Unknown offer.' }
+  if (option.minReputation && state.reputation < option.minReputation) return { ok: false, message: `A loan of $${amount.toLocaleString('en-US')} requires ${option.minReputation} reputation.` }
   const total = Math.round(amount * (1 + option.rate))
   const loan: Loan = { amount, rate: option.rate, total, daily: Math.round(total / BALANCE.loanDays), remaining: total }
   state.loan = loan
   state.money += amount
-  addLog(state, `Кредит получен: ${amount.toLocaleString('ru-RU')} ₽ на ${BALANCE.loanDays} дней.`, 'money')
-  return { ok: true, message: 'Деньги зачислены на счёт.' }
+  addLog(state, `Loan received: $${amount.toLocaleString('en-US')} for ${BALANCE.loanDays} days.`, 'money')
+  return { ok: true, message: 'Money credited to the account.' }
 }
 
 export function acquireEquipment(state: GameState, id: EquipmentId, mode: EquipmentAsset['status'], hours = 0): ActionResult {
-  if (isDebtBlocked(state)) return { ok: false, message: 'Сначала погасите обязательства.' }
+  if (isDebtBlocked(state)) return { ok: false, message: 'Repay your obligations first.' }
   const def = equipmentById(id)
   const assetId = nextId(state, 'asset')
   if (mode === 'owned') {
-    if (!spend(state, def.price)) return { ok: false, message: 'Недостаточно денег.' }
+    if (!spend(state, def.price)) return { ok: false, message: 'Not enough money.' }
     state.equipment.push({ assetId, id, status: mode, projectId: null, hoursRemaining: 0, leaseRemaining: 0, leaseDaily: 0 })
   } else if (mode === 'rented') {
-    if (hours < def.minRentHours) return { ok: false, message: `Минимальная аренда — ${def.minRentHours} ч.` }
-    if (!spend(state, hours * def.rentPerHour)) return { ok: false, message: 'Недостаточно денег.' }
+    if (hours < def.minRentHours) return { ok: false, message: `Minimum rental is ${def.minRentHours} h.` }
+    if (!spend(state, hours * def.rentPerHour)) return { ok: false, message: 'Not enough money.' }
     state.equipment.push({ assetId, id, status: mode, projectId: null, hoursRemaining: hours, leaseRemaining: 0, leaseDaily: 0 })
   } else {
     const discount = isResearched(state, 'good_leasing') ? 0.92 : 1
     const total = Math.round(def.price * (1 + BALANCE.leaseInterest) * discount)
     const down = Math.round(def.price * BALANCE.leaseDownPayment)
-    if (!spend(state, down)) return { ok: false, message: `Для первого взноса нужно ${down.toLocaleString('ru-RU')} ₽.` }
+    if (!spend(state, down)) return { ok: false, message: `The down payment requires $${down.toLocaleString('en-US')}.` }
     const remaining = total - down
     state.equipment.push({ assetId, id, status: mode, projectId: null, hoursRemaining: 0, leaseRemaining: remaining, leaseDaily: Math.ceil(remaining / BALANCE.leaseDays) })
   }
-  addLog(state, `${def.name}: ${mode === 'owned' ? 'покупка' : mode === 'rented' ? `аренда ${hours} ч` : 'лизинг'} оформлена.`, 'money')
-  return { ok: true, message: 'Техника добавлена в парк.' }
+  addLog(state, `${def.name}: ${mode === 'owned' ? 'purchased' : mode === 'rented' ? `rented for ${hours} h` : 'leased'} done.`, 'money')
+  return { ok: true, message: 'Equipment added to the fleet.' }
 }
 
 export function sellEquipment(state: GameState, assetId: string): ActionResult {
   const asset = state.equipment.find((item) => item.assetId === assetId)
-  if (!asset) return { ok: false, message: 'Техника не найдена.' }
-  if (asset.status !== 'owned') return { ok: false, message: 'Можно продать только собственную технику.' }
+  if (!asset) return { ok: false, message: 'Equipment not found.' }
+  if (asset.status !== 'owned') return { ok: false, message: 'Only owned equipment can be sold.' }
   const saleRate = state.research.dealer_network?.status === 'done' ? 0.85 : 0.7
   const price = Math.round(equipmentById(asset.id).price * saleRate)
   if (asset.projectId) {
@@ -989,29 +989,29 @@ export function sellEquipment(state: GameState, assetId: string): ActionResult {
   state.equipment = state.equipment.filter((item) => item.assetId !== assetId)
   state.money += price
   state.equipmentSold += 1
-  addLog(state, `${equipmentById(asset.id).name}: продажа за ${price.toLocaleString('ru-RU')} ₽.`, 'money')
-  return { ok: true, message: `Техника продана за ${price.toLocaleString('ru-RU')} ₽.` }
+  addLog(state, `${equipmentById(asset.id).name}: sold for $${price.toLocaleString('en-US')}.`, 'money')
+  return { ok: true, message: `Sold for $${price.toLocaleString('en-US')}.` }
 }
 
 export function assignEquipment(state: GameState, project: Project, assetId: string | null): ActionResult {
   const asset = assetId ? state.equipment.find((item) => item.assetId === assetId) : null
-  if (assetId && !asset) return { ok: false, message: 'Техника недоступна.' }
-  if (asset?.projectId && asset.projectId !== project.id) return { ok: false, message: 'Эта единица уже назначена на другой объект.' }
+  if (assetId && !asset) return { ok: false, message: 'Equipment unavailable.' }
+  if (asset?.projectId && asset.projectId !== project.id) return { ok: false, message: 'This unit is already assigned to another project.' }
   for (const item of state.equipment) if (item.projectId === project.id) item.projectId = null
   project.equipmentAssetId = assetId
-  if (!asset) return { ok: true, message: 'Техника снята с объекта.' }
+  if (!asset) return { ok: true, message: 'Equipment removed from the project.' }
   asset.projectId = project.id
-  return { ok: true, message: `${equipmentById(asset.id).name} назначена на объект.` }
+  return { ok: true, message: `${equipmentById(asset.id).name} assigned to the project.` }
 }
 
 export function resolveEvent(state: GameState, eventId: string, optionIndex: number): ActionResult {
   const def = EVENTS.find((event) => event.id === eventId)
-  if (!def) return { ok: false, message: 'Событие не найдено.' }
+  if (!def) return { ok: false, message: 'Event not found.' }
   const option = def.options[optionIndex]
-  if (!option) return { ok: false, message: 'Вариант не найден.' }
-  if (option.requiresReputation && state.reputation < option.requiresReputation) return { ok: false, message: `Нужна репутация ${option.requiresReputation}.` }
+  if (!option) return { ok: false, message: 'Option not found.' }
+  if (option.requiresReputation && state.reputation < option.requiresReputation) return { ok: false, message: `Requires ${option.requiresReputation} reputation.` }
   const cost = option.effect.cash ?? 0
-  if (cost < 0 && !spend(state, -cost)) return { ok: false, message: 'Недостаточно средств.' }
+  if (cost < 0 && !spend(state, -cost)) return { ok: false, message: 'Not enough funds.' }
   if (cost > 0) state.money += cost
   if (option.effect.reputation) state.reputation = Math.max(0, Math.min(100, state.reputation + option.effect.reputation))
   if (option.effect.delayDays) {

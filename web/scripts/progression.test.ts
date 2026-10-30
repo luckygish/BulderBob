@@ -34,11 +34,11 @@ describe('прогресс: награды за обучение', () => {
     const firstStep = applyTutorialProgress(state)
     assert.equal(firstStep?.id, 'first_job')
     assert.equal(state.reputation, start + 2)
-    assert.ok(state.journal.some((entry) => entry.text.includes('Награда +2 репутации')))
+    assert.ok(state.journal.some((entry) => entry.text.includes('Reward +2 reputation')))
     const secondStep = applyTutorialProgress(state)
     assert.equal(secondStep?.id, 'hire_two')
     assert.equal(state.reputation, start + 2)
     const latest = state.journal.at(-1)!.text
-    assert.ok(!latest.includes('Награда'), `журнал не должен обещать награду: «${latest}»`)
+    assert.ok(!latest.includes('Reward'), `журнал не должен обещать награду: «${latest}»`)
   })
 })

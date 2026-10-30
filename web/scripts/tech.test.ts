@@ -88,14 +88,14 @@ describe('технологии: новые бонусы и баланс', () => 
     const state = createNewGame(31)
     quietBots(state)
     state.research.reserve_fund = DONE
-    state.day = 90
+    state.day = BALANCE.seasonDays
     state.hour = 23
     state.paused = false
     const before = state.money
     tickHour(state)
     assert.equal(state.day, 1)
     assert.equal(state.money, before + 500_000)
-    assert.ok(state.journal.some((entry) => entry.text.includes('Резервный фонд: +500 000')), 'в журнале нет записи о резервном фонде')
+    assert.ok(state.journal.some((entry) => entry.text.includes('Reserve fund: +$500,000')), 'в журнале нет записи о резервном фонде')
   })
 
   it('PR-департамент: +2 репутации за каждый 5-й сданный объект', () => {
@@ -150,11 +150,11 @@ describe('технологии: новые бонусы и баланс', () => 
     chargeObligation(state, 300_000, 'Тест')
     assert.equal(state.debt, 300_000)
     assert.equal(isDebtBlocked(state), false)
-    assert.ok(state.journal.some((entry) => entry.text.includes('покрыто овердрафтом')), 'нет записи «покрыто овердрафтом»')
+    assert.ok(state.journal.some((entry) => entry.text.includes('covered by overdraft')), 'нет записи «покрыто овердрафтом»')
     chargeObligation(state, 150_000, 'Тест')
     assert.equal(state.debt, 450_000)
     assert.equal(isDebtBlocked(state), true, 'долг выше лимита блокирует работу')
-    assert.ok(state.journal.some((entry) => entry.text.includes('Работа остановлена')), 'нет записи «Работа остановлена»')
+    assert.ok(state.journal.some((entry) => entry.text.includes('work halted')), 'нет записи «Работа остановлена»')
 
     state.day = BALANCE.seasonDays - 1
     state.hour = 23

@@ -6,12 +6,12 @@ import { seasonLogisticsRate, seasonProvisionRate } from './seasons'
 import type { ActionResult, GameState, MaterialId, Project, ProvisionId, Speed, SupplierId } from './types'
 
 export function takeJob(state: GameState, jobId: string): ActionResult {
-  if (isDebtBlocked(state)) return { ok: false, message: 'Сначала погасите обязательства.' }
-  if (state.projects.length >= maxProjects(state)) return { ok: false, message: `Лимит активных объектов: ${maxProjects(state)}.` }
+  if (isDebtBlocked(state)) return { ok: false, message: 'Repay your obligations first.' }
+  if (state.projects.length >= maxProjects(state)) return { ok: false, message: `Active project limit: ${maxProjects(state)}.` }
   const job = state.jobs.find((item) => item.id === jobId)
-  if (!job) return { ok: false, message: 'Заказ уже недоступен.' }
+  if (!job) return { ok: false, message: 'Order is no longer available.' }
   const def = buildingById(job.building)
-  if (job.special && state.reputation < def.minReputation) return { ok: false, message: `Особые проекты доступны с репутации ${def.minReputation}.` }
+  if (job.special && state.reputation < def.minReputation) return { ok: false, message: `Special projects require ${def.minReputation} reputation.` }
   state.jobs = state.jobs.filter((item) => item.id !== jobId)
   const usedCrews = new Set(state.projects.flatMap((project) => project.crewIds))
   let freeCrew = -1
@@ -28,33 +28,33 @@ export function takeJob(state: GameState, jobId: string): ActionResult {
     state.money += project.advance - project.factoringFee
   }
   state.projects.push(project)
-  addLog(state, `Взят заказ «${buildingById(job.building).name}» для ${job.client}.`, 'success')
-  return { ok: true, message: 'Проект создан. Проверьте бригаду, технику и обеспечение.' }
+  addLog(state, `Took contract "${buildingById(job.building).name}" for ${job.client}.`, 'success')
+  return { ok: true, message: 'Project created. Check crew, equipment and provisions.' }
 }
 
 export function hireWorker(state: GameState, workerId: string, crewId: number): ActionResult {
-  if (crewId < 0 || crewId >= maxCrews(state)) return { ok: false, message: 'Эта бригада ещё не открыта.' }
-  if (state.crews[crewId].workers.length >= BALANCE.maxCrewSize) return { ok: false, message: 'В бригаде уже 3 человека.' }
+  if (crewId < 0 || crewId >= maxCrews(state)) return { ok: false, message: 'This crew is not unlocked yet.' }
+  if (state.crews[crewId].workers.length >= BALANCE.maxCrewSize) return { ok: false, message: 'The crew already has 3 people.' }
   const worker = state.candidates.find((item) => item.id === workerId)
-  if (!worker) return { ok: false, message: 'Кандидат уже нанят другой компанией.' }
+  if (!worker) return { ok: false, message: 'Candidate already hired by another company.' }
   state.candidates = state.candidates.filter((item) => item.id !== workerId)
   state.crews[crewId].workers.push(worker)
-  return { ok: true, message: `${worker.name} добавлен в бригаду №${crewId + 1}.` }
+  return { ok: true, message: `${worker.name} added to crew #${crewId + 1}.` }
 }
 
 export function fireWorker(state: GameState, workerId: string, crewId: number): ActionResult {
   const crew = state.crews[crewId]
   const worker = crew?.workers.find((item) => item.id === workerId)
-  if (!worker) return { ok: false, message: 'Работник не найден.' }
+  if (!worker) return { ok: false, message: 'Worker not found.' }
   crew.workers = crew.workers.filter((item) => item.id !== workerId)
   state.candidates.push(worker)
-  return { ok: true, message: `${worker.name} возвращён в список кандидатов.` }
+  return { ok: true, message: `${worker.name} returned to the candidate pool.` }
 }
 
 export function assignCrew(state: GameState, projectId: string, crewId: number, slot = 0): ActionResult {
   const project = state.projects.find((item) => item.id === projectId)
-  if (!project) return { ok: false, message: 'Проект не найден.' }
-  if (crewId >= maxCrews(state)) return { ok: false, message: 'Бригада недоступна.' }
+  if (!project) return { ok: false, message: 'Project not found.' }
+  if (crewId >= maxCrews(state)) return { ok: false, message: 'Crew unavailable.' }
   if (crewId >= 0) {
     for (const other of state.projects) {
       if (other.id !== project.id) other.crewIds = other.crewIds.filter((id) => id !== crewId)
@@ -65,22 +65,22 @@ export function assignCrew(state: GameState, projectId: string, crewId: number, 
     project.crewIds.splice(slot, 1)
   }
   project.crewIds = [...new Set(project.crewIds.filter((id) => id >= 0))].slice(0, requiredCrews(project))
-  return { ok: true, message: crewId < 0 ? 'Бригада снята с объекта.' : `Назначена бригада №${crewId + 1}.` }
+  return { ok: true, message: crewId < 0 ? 'Crew removed from project.' : `Crew #${crewId + 1} assigned.` }
 }
 
 export function allocateProjectStage(state: GameState, projectId: string): ActionResult {
   const project = state.projects.find((item) => item.id === projectId)
-  if (!project) return { ok: false, message: 'Проект не найден.' }
+  if (!project) return { ok: false, message: 'Project not found.' }
   const ready = allocateStage(state, project, project.currentStage)
-  return { ok: ready, message: ready ? 'Этап полностью обеспечен.' : 'Часть материалов перенесена; остатка на складах не хватает.' }
+  return { ok: ready, message: ready ? 'Stage fully supplied.' : 'Some materials moved; not enough left in stock.' }
 }
 
 export function startFullProject(state: GameState, projectId: string): ActionResult {
   const project = state.projects.find((item) => item.id === projectId)
-  if (!project) return { ok: false, message: 'Проект не найден.' }
-  if (project.started) return { ok: false, message: 'Стройка уже начата.' }
+  if (!project) return { ok: false, message: 'Project not found.' }
+  if (project.started) return { ok: false, message: 'Construction already started.' }
   const missing = missingForProject(state, project)
-  if (Object.keys(missing).length > 0) return { ok: false, message: 'Для запуска всех этапов закупите недостающие материалы.' }
+  if (Object.keys(missing).length > 0) return { ok: false, message: 'To start all stages, buy the missing materials.' }
   project.stages.forEach((_, index) => allocateStage(state, project, index))
   project.autoAdvance = true
   return startStage(state, project)
@@ -88,7 +88,7 @@ export function startFullProject(state: GameState, projectId: string): ActionRes
 
 export function startCurrentStage(state: GameState, projectId: string): ActionResult {
   const project = state.projects.find((item) => item.id === projectId)
-  if (!project) return { ok: false, message: 'Проект не найден.' }
+  if (!project) return { ok: false, message: 'Project not found.' }
   return startStage(state, project)
 }
 
@@ -106,34 +106,34 @@ export function missingForProject(state: GameState, project: Project): Partial<R
 
 export function buyMissingForProject(state: GameState, projectId: string, supplier: SupplierId): ActionResult {
   const project = state.projects.find((item) => item.id === projectId)
-  if (!project) return { ok: false, message: 'Проект не найден.' }
-  if (isDebtBlocked(state)) return { ok: false, message: 'Сначала погасите обязательства.' }
+  if (!project) return { ok: false, message: 'Project not found.' }
+  if (isDebtBlocked(state)) return { ok: false, message: 'Repay your obligations first.' }
   const missing = missingForProject(state, project)
   const entries = Object.entries(missing) as [MaterialId, number][]
-  if (entries.length === 0) return { ok: false, message: 'Все материалы уже есть на складах компании или объекта.' }
+  if (entries.length === 0) return { ok: false, message: 'All materials are already in stock.' }
   const feeMultiplier = 1 + projectLogisticsRate(state, project) + seasonLogisticsRate(state)
   let total = 0
   for (const [material, qty] of entries) {
-    if (stockQty(state, material, supplier) < qty) return { ok: false, message: `На выбранной базе недостаточно: ${materialById(material).name}.` }
+    if (stockQty(state, material, supplier) < qty) return { ok: false, message: `Not enough at the selected yard: ${materialById(material).name}.` }
     const quote = quoteMaterial(state, material, qty, supplier)
     total += quote.cost + Math.round(quote.fee * feeMultiplier)
   }
-  if (state.money < total) return { ok: false, message: `Нужно ${total.toLocaleString('ru-RU')} ₽ с учётом доставки.` }
+  if (state.money < total) return { ok: false, message: `Needs $${total.toLocaleString('en-US')} including delivery.` }
   let fees = 0
   for (const [material, qty] of entries) {
     fees += Math.round(quoteMaterial(state, material, qty, supplier).fee * feeMultiplier)
     purchaseMaterial(state, material, qty, supplier, project.id, feeMultiplier)
   }
   project.logisticsCost += fees
-  return { ok: true, message: `Закупка оформлена на ${total.toLocaleString('ru-RU')} ₽ и зарезервирована за объектом.` }
+  return { ok: true, message: `Purchase of $${total.toLocaleString('en-US')} completed and reserved for the project.` }
 }
 
 export function restockProjectFromWarehouse(state: GameState, projectId: string): ActionResult {
   const project = state.projects.find((item) => item.id === projectId)
-  if (!project) return { ok: false, message: 'Проект не найден.' }
+  if (!project) return { ok: false, message: 'Project not found.' }
   const missing = missingForProject(state, project)
   const entries = Object.entries(missing) as [MaterialId, number][]
-  if (entries.length === 0) return { ok: false, message: 'Все материалы уже есть на складах компании или объекта.' }
+  if (entries.length === 0) return { ok: false, message: 'All materials are already in stock.' }
   const taken: string[] = []
   for (const [material, need] of entries) {
     const take = Math.min(need, inventoryQty(state, material))
@@ -142,48 +142,48 @@ export function restockProjectFromWarehouse(state: GameState, projectId: string)
     addProjectInventory(project, material, take, Math.round(cost / take))
     taken.push(`${materialById(material).name} ${take} ${materialById(material).unit}`)
   }
-  if (taken.length === 0) return { ok: false, message: 'На складе нет недостающих материалов (закупите на базе).' }
-  addLog(state, `Пополнено со склада: ${taken.join(', ')}.`, 'money')
-  return { ok: true, message: `В резерв объекта перемещено со склада: ${taken.join(', ')}.` }
+  if (taken.length === 0) return { ok: false, message: 'No missing materials in the warehouse (buy at the yard).' }
+  addLog(state, `Restocked from warehouse: ${taken.join(', ')}.`, 'money')
+  return { ok: true, message: `Moved from the warehouse to project reserve: ${taken.join(', ')}.` }
 }
 
 export function restockMaterialFromWarehouse(state: GameState, projectId: string, material: MaterialId, qty: number): ActionResult {
   const project = state.projects.find((item) => item.id === projectId)
-  if (!project) return { ok: false, message: 'Проект не найден.' }
-  if (!Number.isInteger(qty) || qty <= 0) return { ok: false, message: 'Укажите целое количество больше нуля.' }
+  if (!project) return { ok: false, message: 'Project not found.' }
+  if (!Number.isInteger(qty) || qty <= 0) return { ok: false, message: 'Enter a whole number greater than zero.' }
   const need = missingForProject(state, project)[material] ?? 0
-  if (need <= 0) return { ok: false, message: 'Этот материал для объекта не требуется.' }
+  if (need <= 0) return { ok: false, message: 'This material is not needed for the project.' }
   const take = Math.min(qty, need, inventoryQty(state, material))
-  if (take <= 0) return { ok: false, message: `На складе нет ${materialById(material).name.toLowerCase()}.` }
+  if (take <= 0) return { ok: false, message: `No ${materialById(material).name.toLowerCase()} in the warehouse.` }
   const { cost } = takeFromInventory(state, material, take)
   addProjectInventory(project, material, take, Math.round(cost / take))
-  addLog(state, `Пополнено со склада: ${materialById(material).name}, ${take} ${materialById(material).unit}.`, 'money')
-  return { ok: true, message: `В резерв объекта перемещено: ${materialById(material).name}, ${take} ${materialById(material).unit}.` }
+  addLog(state, `Restocked from warehouse: ${materialById(material).name}, ${take} ${materialById(material).unit}.`, 'money')
+  return { ok: true, message: `Moved to project reserve: ${materialById(material).name}, ${take} ${materialById(material).unit}.` }
 }
 
 export function buyProvision(state: GameState, id: ProvisionId): ActionResult {
-  if (isDebtBlocked(state)) return { ok: false, message: 'Сначала погасите обязательства.' }
+  if (isDebtBlocked(state)) return { ok: false, message: 'Repay your obligations first.' }
   const def = PROVISIONS.find((item) => item.id === id)!
   const price = Math.round(def.price * (1 + seasonProvisionRate(state)))
-  if (!spend(state, price)) return { ok: false, message: 'Недостаточно денег.' }
+  if (!spend(state, price)) return { ok: false, message: 'Not enough money.' }
   state.provisions[id] += 1
-  return { ok: true, message: `${def.name}: комплектов ${state.provisions[id]}.` }
+  return { ok: true, message: `${def.name}: ${state.provisions[id]} sets.` }
 }
 
 export function startResearch(state: GameState, id: string): ActionResult {
   const tech = techById(id)
-  if (isDebtBlocked(state)) return { ok: false, message: 'Сначала погасите обязательства.' }
-  if (isResearched(state, id)) return { ok: false, message: 'Технология уже изучена.' }
-  if (state.research[id]?.status === 'researching') return { ok: false, message: 'Исследование уже идёт.' }
-  if (Object.values(state.research).some((item) => item.status === 'researching')) return { ok: false, message: 'Одновременно доступно одно исследование.' }
-  if (tech.requires && !isResearched(state, tech.requires)) return { ok: false, message: `Требуется: ${techById(tech.requires).name}.` }
-  if (tech.requiresReputation && state.reputation < tech.requiresReputation) return { ok: false, message: `Требуется репутация ${tech.requiresReputation}.` }
-  if (tech.requiresCapital && netWorth(state) < tech.requiresCapital) return { ok: false, message: `Требуется капитал ${tech.requiresCapital.toLocaleString('ru-RU')} ₽.` }
-  if (state.money < tech.requiresMoney) return { ok: false, message: `Требуется капитал ${tech.requiresMoney.toLocaleString('ru-RU')} ₽.` }
-  if (!spend(state, tech.cost)) return { ok: false, message: 'Недостаточно денег.' }
+  if (isDebtBlocked(state)) return { ok: false, message: 'Repay your obligations first.' }
+  if (isResearched(state, id)) return { ok: false, message: 'Technology already researched.' }
+  if (state.research[id]?.status === 'researching') return { ok: false, message: 'Research is already in progress.' }
+  if (Object.values(state.research).some((item) => item.status === 'researching')) return { ok: false, message: 'Only one research at a time.' }
+  if (tech.requires && !isResearched(state, tech.requires)) return { ok: false, message: `Requires: ${techById(tech.requires).name}.` }
+  if (tech.requiresReputation && state.reputation < tech.requiresReputation) return { ok: false, message: `Requires ${tech.requiresReputation} reputation.` }
+  if (tech.requiresCapital && netWorth(state) < tech.requiresCapital) return { ok: false, message: `Requires capital of $${tech.requiresCapital.toLocaleString('en-US')}.` }
+  if (state.money < tech.requiresMoney) return { ok: false, message: `Requires capital of $${tech.requiresMoney.toLocaleString('en-US')}.` }
+  if (!spend(state, tech.cost)) return { ok: false, message: 'Not enough money.' }
   state.research[id] = { status: 'researching', progress: 0 }
-  addLog(state, `Начато исследование «${tech.name}», ${tech.days} дн.`, 'money')
-  return { ok: true, message: 'Исследование начато.' }
+  addLog(state, `Research started: "${tech.name}", ${tech.days} days.`, 'money')
+  return { ok: true, message: 'Research started.' }
 }
 
 export function setSpeed(state: GameState, speed: Speed): void {
