@@ -34,6 +34,7 @@ export interface Project {
   laborPaid: number
   logisticsCost: number
   equipmentCost: number
+  rentCost: number
   factoringFee: number
   advance: number
   penalty: number

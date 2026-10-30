@@ -88,17 +88,19 @@ function costStructure(projects: Project[]): string {
     labor: sum.labor + project.laborCost,
     logistics: sum.logistics + project.logisticsCost,
     equipment: sum.equipment + project.equipmentCost,
+    rent: sum.rent + (project.rentCost ?? 0),
     factoring: sum.factoring + project.factoringFee,
-  }), { material: 0, labor: 0, logistics: 0, equipment: 0, factoring: 0 })
+  }), { material: 0, labor: 0, logistics: 0, equipment: 0, rent: 0, factoring: 0 })
   const total = Math.max(1, Object.values(totals).reduce((sum, value) => sum + value, 0))
   const parts = [
     ['Материалы', totals.material, 'material'],
     ['Труд', totals.labor, 'labor'],
     ['Доставка', totals.logistics, 'logistics'],
-    ['Техника', totals.equipment, 'equipment'],
+    ['Аренда', totals.rent, 'rent'],
+    ['Техника', totals.equipment - totals.rent, 'equipment'],
     ['Факторинг', totals.factoring, 'factoring'],
   ] as const
-  return `<div class="cost-donut">${parts.map(([label, value, className]) => `<div class="cost-part ${className}"><span>${label}</span><strong>${percent(value / total)}</strong><div class="stock-bar"><span style="width:${value / total * 100}%"></span></div></div>`).join('')}</div>`
+  return `<div class="cost-donut">${parts.map(([label, value, className]) => `<div class="cost-part ${className}"><span>${label}</span><b>${money(value)}</b><strong>${percent(Math.max(0, value) / total)}</strong><div class="stock-bar"><span style="width:${Math.max(0, value) / total * 100}%"></span></div></div>`).join('')}</div>`
 }
 
 function buildingStats(projects: Project[]): string {

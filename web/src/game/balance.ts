@@ -35,6 +35,8 @@ export const BALANCE = {
   botWorkHours: 10,
   botDailyRental: 35_000,
   seasonDays: 90,
+  seasonSuccessReputation: 5,
+  seasonFailReputation: 15,
   specialJobChance: 0.2,
   hourMs: { 1: 2_000, 2: 1_000, 4: 250 },
   journalLimit: 200,

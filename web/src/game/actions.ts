@@ -19,7 +19,7 @@ export function takeJob(state: GameState, jobId: string): ActionResult {
   const project: Project = {
     id: nextId(state, 'project'), job, stages: makeStages(job.building), currentStage: 0,
     crewIds: freeCrew >= 0 ? [freeCrew] : [], equipmentAssetId: null, reserved: {}, autoAdvance: false, started: false,
-    materialCost: 0, laborCost: 0, laborPaid: 0, logisticsCost: 0, equipmentCost: 0,
+    materialCost: 0, laborCost: 0, laborPaid: 0, logisticsCost: 0, equipmentCost: 0, rentCost: 0,
     factoringFee: 0, advance: 0, penalty: 0, totalHours: 0, completedDay: null, profit: 0,
   }
   if (isResearched(state, 'factoring')) {

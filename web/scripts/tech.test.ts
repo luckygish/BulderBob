@@ -2,7 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { BALANCE } from '../src/game/balance'
 import { PROVISIONS, TECHNOLOGIES, buildingById, equipmentById, techById } from '../src/game/catalog'
-import { acquireEquipment, assignEquipment, createJob, createNewGame, hasStageMaterials, overdraftLimit, sellEquipment, startStage, tickHour, workerBonus } from '../src/game/engine'
+import { acquireEquipment, assignEquipment, chargeObligation, createJob, createNewGame, hasStageMaterials, isDebtBlocked, overdraftLimit, sellEquipment, spend, startStage, tickHour, workerBonus } from '../src/game/engine'
 import { assignCrew, buyMissingForProject, buyProvision, hireWorker, startFullProject, takeJob } from '../src/game/actions'
 import { seasonMaterialPriceRate, seasonNightWageMultiplier } from '../src/game/seasons'
 import type { GameState, Project } from '../src/game/types'
@@ -21,7 +21,7 @@ function fakeProject(): Project {
   return {
     id: 'fake', job: { id: 'fj', client: 'Клиент', building: 'reconstruction', budget: 1_000_000, deadline: 1, createdDay: 1, special: false, expiresDay: 1 },
     stages: [], currentStage: 0, crewIds: [], equipmentAssetId: null, reserved: {}, autoAdvance: false, started: true,
-    materialCost: 0, laborCost: 0, laborPaid: 0, logisticsCost: 0, equipmentCost: 0, factoringFee: 0, advance: 0, penalty: 0, totalHours: 0, completedDay: 1, profit: 0,
+    materialCost: 0, laborCost: 0, laborPaid: 0, logisticsCost: 0, equipmentCost: 0, rentCost: 0, factoringFee: 0, advance: 0, penalty: 0, totalHours: 0, completedDay: 1, profit: 0,
   }
 }
 
@@ -95,6 +95,7 @@ describe('технологии: новые бонусы и баланс', () => 
     tickHour(state)
     assert.equal(state.day, 1)
     assert.equal(state.money, before + 500_000)
+    assert.ok(state.journal.some((entry) => entry.text.includes('Резервный фонд: +500 000')), 'в журнале нет записи о резервном фонде')
   })
 
   it('PR-департамент: +2 репутации за каждый 5-й сданный объект', () => {
@@ -128,11 +129,41 @@ describe('технологии: новые бонусы и баланс', () => 
     assert.ok(Math.abs(seasonNightWageMultiplier(state) - 1.5 * 0.85) < 1e-9)
   })
 
-  it('Овердрафт: лимит 400 000 ₽', () => {
+  it('Овердрафт: лимит 400 000 ₽ и поведение платежей', () => {
     const state = createNewGame(8)
     assert.equal(overdraftLimit(state), 0)
+    assert.equal(spend(state, state.money + 1), false, 'без исследования в минус уйти нельзя')
+    state.debt = 1
+    assert.equal(isDebtBlocked(state), true, 'любой долг блокирует работу без исследования')
+    assert.equal(spend(state, 0), false)
+    state.debt = 0
+
     state.research.overdraft = DONE
     assert.equal(overdraftLimit(state), 400_000)
+    state.money = 0
+    assert.equal(spend(state, 400_000), true)
+    assert.equal(state.money, -400_000)
+    assert.equal(spend(state, 400_001), false, 'ниже лимита −400 000 тратить нельзя')
+
+    state.money = 0
+    state.debt = 0
+    chargeObligation(state, 300_000, 'Тест')
+    assert.equal(state.debt, 300_000)
+    assert.equal(isDebtBlocked(state), false)
+    assert.ok(state.journal.some((entry) => entry.text.includes('покрыто овердрафтом')), 'нет записи «покрыто овердрафтом»')
+    chargeObligation(state, 150_000, 'Тест')
+    assert.equal(state.debt, 450_000)
+    assert.equal(isDebtBlocked(state), true, 'долг выше лимита блокирует работу')
+    assert.ok(state.journal.some((entry) => entry.text.includes('Работа остановлена')), 'нет записи «Работа остановлена»')
+
+    state.day = BALANCE.seasonDays - 1
+    state.hour = 23
+    state.money = 0
+    state.debt = 100_000
+    state.paused = false
+    quietBots(state)
+    tickHour(state)
+    assert.equal(state.debt, 101_000, 'долг должен вырасти на 1% за день')
   })
 
   it('Факторинг: аванс 40% и комиссия 1.5%', () => {

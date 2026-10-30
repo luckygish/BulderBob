@@ -221,6 +221,7 @@ export async function loadGame(file: string): Promise<GameState | null> {
     state.seasonDeadlineBonus ??= 0
     state.seasonWageBonus ??= 0
     state.corpFinalChoice ??= null
+    for (const project of [...state.projects, ...state.completed]) project.rentCost ??= 0
     state.paused = true
     return state
   } catch {

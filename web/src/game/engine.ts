@@ -473,7 +473,7 @@ export function nightEfficiency(state: GameState, hasOwl: boolean): number {
 
 function processProjectHour(state: GameState, project: Project): void {
   if (isDebtBlocked(state) || project.currentStage >= project.stages.length || project.stages[project.currentStage].status !== 'in_progress') return
-  if (!canWorkNow(state, project) || !projectEquipmentReady(state, project)) return
+  if (!projectCrewsReady(state, project) || !canWorkNow(state, project) || !projectEquipmentReady(state, project)) return
   const workers = projectWorkers(state, project)
   if (workers.length === 0) return
   const dayEnd = workDayEnd(state)
@@ -484,6 +484,7 @@ function processProjectHour(state: GameState, project: Project): void {
   const asset = state.equipment.find((item) => item.assetId === project.equipmentAssetId)
   if (asset?.status === 'rented') {
     project.equipmentCost += equipmentById(asset.id).rentPerHour
+    project.rentCost = (project.rentCost ?? 0) + equipmentById(asset.id).rentPerHour
     asset.hoursRemaining -= 1
   }
   const stageDef = buildingById(project.job.building).stages[project.currentStage]
@@ -862,7 +863,7 @@ function transitionSeason(state: GameState): void {
   const goal = season.goal
   const success = netWorth(state) >= goal.capital && state.reputation >= goal.reputation && state.seasonCompleted >= goal.completed
   const final = state.seasonIndex >= 9
-  state.reputation = Math.max(0, Math.min(100, state.reputation + (success ? 5 : -15)))
+  state.reputation = Math.max(0, Math.min(100, state.reputation + (success ? BALANCE.seasonSuccessReputation : -BALANCE.seasonFailReputation)))
   if (!final) state.seasonIndex += 1
   if (isResearched(state, 'reserve_fund')) {
     state.money += 500_000
@@ -904,8 +905,8 @@ function transitionSeason(state: GameState): void {
     final: success && final,
     title: success ? (final ? 'Финальный сезон выполнен' : 'Сезон выполнен') : 'Сезон провален',
     text: success
-      ? `«${season.name}» завершён успешно. Награда +5 репутации. Начинается «${currentSeason(state).name}».`
-      : `Цели сезона «${season.name}» не достигнуты. Штраф −15 репутации. Начинается «${currentSeason(state).name}».`,
+      ? `«${season.name}» завершён успешно. Награда +${BALANCE.seasonSuccessReputation} репутации. Начинается «${currentSeason(state).name}».`
+      : `Цели сезона «${season.name}» не достигнуты. Штраф −${BALANCE.seasonFailReputation} репутации. Начинается «${currentSeason(state).name}».`,
   }
   addLog(state, state.seasonNotice.text, success ? 'success' : 'warning')
   state.paused = true

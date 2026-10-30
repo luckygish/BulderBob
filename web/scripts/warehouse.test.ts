@@ -69,7 +69,7 @@ describe('склад: продажа излишка сверх потолка', 
       job: { id: 'job-1', client: 'Тест', building: 'reconstruction', budget: 800_000, deadline: state.day + 30, createdDay: state.day, special: false, expiresDay: state.day + 30 },
       stages: makeStages('reconstruction'), currentStage: 0, crewIds: [0], equipmentAssetId: null,
       reserved: { concrete: [{ qty: 700, unitCost: 100 }] }, autoAdvance: false, started: true,
-      materialCost: 0, laborCost: 0, laborPaid: 0, logisticsCost: 0, equipmentCost: 0, factoringFee: 0, advance: 0, penalty: 0, totalHours: 0, completedDay: null, profit: 0,
+      materialCost: 0, laborCost: 0, laborPaid: 0, logisticsCost: 0, equipmentCost: 0, rentCost: 0, factoringFee: 0, advance: 0, penalty: 0, totalHours: 0, completedDay: null, profit: 0,
     }
     state.projects.push(project)
     state.inventory.concrete.push({ qty: 900, unitCost: 50 })

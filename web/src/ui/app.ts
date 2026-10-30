@@ -258,20 +258,19 @@ export class App {
     }
   }
 
-  private async saveAndQuit(): Promise<void> {
+  private async saveAndExit(): Promise<void> {
     if (this.state && this.activeSave) await saveGame(this.state, this.activeSave)
-    if (isDesktop()) {
-      this.closing = true
-      this.showSaveOverlay()
-      try {
-        await quitApp()
-      } catch {
-        this.closing = false
-        document.querySelector('.save-overlay')?.remove()
-      }
-    } else {
-      this.notify('В браузерной версии окно не закрывается — закройте вкладку.', 'success')
-    }
+    window.clearTimeout(this.timer)
+    this.timer = undefined
+    this.state = null
+    this.activeSave = null
+    this.projectId = null
+    this.journalOpen = false
+    this.navOpen = false
+    this.menuMode = 'start'
+    this.menuBusy = false
+    this.renderStartScreen()
+    this.notify('Игра сохранена. До встречи!', 'success')
   }
 
   private showSaveOverlay(): void {
@@ -389,8 +388,8 @@ export class App {
         this.commit(resolveEvent(this.state!, eventId, Number(optionIndex)))
         break
       }
-      case 'save-exit': void this.saveAndQuit(); break
-      case 'take-job': this.finish(takeJob(this.state!, id)); if (this.state!.projects.length) { this.projectId = this.state!.projects.at(-1)!.id; this.route = 'construction'; this.render() } break
+      case 'save-exit': void this.saveAndExit(); break
+      case 'take-job': this.finish(takeJob(this.state!, id)); if (this.state!.projects.length) this.projectId = this.state!.projects.at(-1)!.id; break
       case 'open-project': this.projectId = id; this.route = 'construction'; this.render(); break
       case 'select-project': this.projectId = id; this.render(); break
       case 'hire': this.finish(hireWorker(this.state!, id, this.crewId)); break

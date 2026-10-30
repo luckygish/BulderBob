@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { BUILDINGS, PROVISIONS, buildingById } from '../src/game/catalog'
-import { acquireEquipment, assignEquipment, createNewGame, createJob, hasStageMaterials, startStage, tickHour } from '../src/game/engine'
+import { acquireEquipment, assignEquipment, createNewGame, createJob, hasStageMaterials, projectCrewsReady, requiredCrews, startStage, tickHour } from '../src/game/engine'
 import { assignCrew, buyMissingForProject, buyProvision, hireWorker, startFullProject, takeJob } from '../src/game/actions'
 import type { EquipmentAsset, EquipmentId, GameState, Project } from '../src/game/types'
 
@@ -44,7 +44,7 @@ function rent(state: GameState, id: EquipmentId): EquipmentAsset {
   return state.equipment.at(-1)!
 }
 
-function simulate(buildingId: string): void {
+function beginSimulation(buildingId: string): { state: GameState; project: Project } {
   const state = createNewGame(1_234)
   state.money = 50_000_000
   state.reputation = 90
@@ -81,8 +81,13 @@ function simulate(buildingId: string): void {
   const bought = buyMissingForProject(state, project.id, 'north')
   assert.equal(bought.ok, true, `${def.id}: ${bought.message}`)
   assignEquipment(state, project, mixer.assetId)
+  return { state, project }
+}
+
+function simulate(buildingId: string): void {
+  const { state, project } = beginSimulation(buildingId)
   const started = startFullProject(state, project.id)
-  assert.equal(started.ok, true, `${def.id}: ${started.message}`)
+  assert.equal(started.ok, true, `${buildingId}: ${started.message}`)
 
   const deadline = project.job.deadline
   let ticks = 0
@@ -96,9 +101,9 @@ function simulate(buildingId: string): void {
     ticks += 1
   }
 
-  assert.ok(!state.projects.includes(project), `${def.id}: не достроен за ${ticks} ходов`)
-  assert.ok(project.completedDay !== null, `${def.id}: проект не сдан`)
-  assert.ok(project.completedDay! <= deadline, `${def.id}: сдан на день ${project.completedDay}, срок — день ${deadline}`)
+  assert.ok(!state.projects.includes(project), `${buildingId}: не достроен за ${ticks} ходов`)
+  assert.ok(project.completedDay !== null, `${buildingId}: проект не сдан`)
+  assert.ok(project.completedDay! <= deadline, `${buildingId}: сдан на день ${project.completedDay}, срок — день ${deadline}`)
 }
 
 describe('стройка: трудоёмкость этапов увеличена на 15%', () => {
@@ -111,5 +116,44 @@ describe('стройка: трудоёмкость этапов увеличен
 
   it('сроки заказов автопродлены и соблюдаются для всех зданий', () => {
     for (const building of BUILDINGS) simulate(building.id)
+  })
+})
+
+describe('стройка: бригады', () => {
+  it('снятие обязательной второй бригады останавливает стройку, возврат возобновляет', () => {
+    const { state, project } = beginSimulation('kindergarten')
+    const started = startStage(state, project)
+    assert.equal(started.ok, true, started.message)
+    assert.equal(requiredCrews(project), 2, 'детсад должен требовать две бригады')
+    const stage = project.stages[project.currentStage]
+    const progressBefore = stage.progress
+    const laborBefore = project.laborCost
+
+    const removed = assignCrew(state, project.id, -1, 1)
+    assert.equal(removed.ok, true, removed.message)
+    assert.equal(projectCrewsReady(state, project), false, 'после снятия бригады стройка должна быть заблокирована')
+
+    for (let tick = 0; tick < 40; tick += 1) {
+      if (state.paused) state.paused = false
+      if (state.event) state.event = null
+      assignForStage(state, project)
+      tickHour(state)
+    }
+    assert.equal(stage.progress, progressBefore, 'прогресс не должен расти без второй бригады')
+    assert.equal(project.laborCost, laborBefore, 'часы и зарплата не должны начисляться без второй бригады')
+
+    const restored = assignCrew(state, project.id, 1, 1)
+    assert.equal(restored.ok, true, restored.message)
+    assert.equal(projectCrewsReady(state, project), true)
+    let resume = 0
+    while (stage.progress < 1 && resume < 400) {
+      if (state.paused) state.paused = false
+      if (state.event) state.event = null
+      assignForStage(state, project)
+      tickHour(state)
+      resume += 1
+    }
+    assert.ok(resume < 400, 'стройка не возобновилась после возврата бригады')
+    assert.ok(project.laborCost > laborBefore, 'часы не изменились после возврата бригады')
   })
 })

@@ -1743,6 +1743,11 @@ progress.progress::-moz-progress-bar {
   font-size: var(--text-xs);
 }
 
+.cost-part b {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
 .cost-part strong {
   font-size: 13px;
 }

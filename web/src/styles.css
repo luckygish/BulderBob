@@ -724,13 +724,15 @@ button.company-chip:hover { background: rgba(255,255,255,.085); }
 .bar.profit.negative { background: #c96f58; }
 .bar-item small { color: var(--muted); font-size: 8px; }
 .cost-donut { display: grid; gap: 10px; }
-.cost-part { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+.cost-part { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 10px; align-items: center; }
 .cost-part span { font-size: 9px; color: var(--muted); }
+.cost-part b { font-size: 10px; font-variant-numeric: tabular-nums; color: var(--muted); }
 .cost-part strong { font-size: 10px; }
 .cost-part .stock-bar { grid-column: 1 / -1; height: 7px; }
 .cost-part.material .stock-bar span { background: var(--orange); }
 .cost-part.labor .stock-bar span { background: var(--blue); }
 .cost-part.logistics .stock-bar span { background: #55a88d; }
+.cost-part.rent .stock-bar span { background: #e07b54; }
 .cost-part.equipment .stock-bar span { background: #8c7cc0; }
 .cost-part.factoring .stock-bar span { background: #c9a14f; }
 .type-stats { display: grid; gap: 10px; }
