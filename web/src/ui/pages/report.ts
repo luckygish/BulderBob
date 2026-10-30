@@ -1,4 +1,5 @@
 import { BALANCE } from '../../game/balance'
+import { MATERIALS } from '../../game/catalog'
 import { buildingById } from '../../game/catalog'
 import { isResearched, netWorth, warehouseStorageFee } from '../../game/engine'
 import { capitalProgress, companyStatus, equipmentMaintenance, projectCosts, seasonGoalMet } from '../../game/selectors'
@@ -107,6 +108,75 @@ function buildingStats(projects: Project[]): string {
   return `<div class="type-stats">${[...counts.entries()].map(([building, count]) => `<div><span class="building-mark">${buildingById(building).short}</span><div><strong>${buildingById(building).name}</strong><small>${count} шт.</small></div></div>`).join('')}</div>`
 }
 
+function buildingMarginStats(projects: Project[]): string {
+  if (!projects.length) return `<div class="chart-empty">${icon('jobs')}<strong>Нет сданных объектов</strong><span>Доходность по типам появится после первой сдачи.</span></div>`
+  const rows = new Map<string, { count: number; revenue: number; profit: number }>()
+  for (const project of projects) {
+    const entry = rows.get(project.job.building) ?? { count: 0, revenue: 0, profit: 0 }
+    entry.count += 1
+    entry.revenue += project.job.budget - project.penalty
+    entry.profit += project.profit
+    rows.set(project.job.building, entry)
+  }
+  const sorted = [...rows.entries()].sort((a, b) => b[1].profit - a[1].profit)
+  const head = `<div class="margin-stat margin-head"><span></span><span></span><span>Выручка</span><span>Прибыль</span><span>Маржа</span></div>`
+  const body = sorted.map(([id, row]) => {
+    const def = buildingById(id)
+    const margin = row.revenue > 0 ? row.profit / row.revenue : 0
+    return `<div class="margin-stat"><span class="building-mark">${def.short}</span><div class="margin-name"><strong>${def.name}</strong><small>${row.count} шт.</small></div><span class="margin-value">${compactMoney(row.revenue)}</span><span class="margin-value ${row.profit >= 0 ? 'positive' : 'negative'}">${compactMoney(row.profit)}</span><strong class="margin-pct ${row.profit >= 0 ? 'positive' : 'negative'}">${percent(margin)}</strong></div>`
+  }).join('')
+  return `<div class="margin-stats">${head}${body}</div>`
+}
+
+function priceChart(history: GameState['priceHistory']): string {
+  const depth = Math.max(0, ...Object.values(history).map((values) => values.length))
+  if (depth < 2) return `<div class="chart-empty">${icon('trend')}<strong>Недостаточно данных</strong><span>График цен появится после нескольких пересчётов рынка.</span></div>`
+  const width = 660
+  const height = 250
+  const padTop = 18
+  const padLeft = 66
+  const padRight = 18
+  const padBottom = 48
+  const plotW = width - padLeft - padRight
+  const plotH = height - padTop - padBottom
+  const all = Object.values(history).flatMap((values) => values)
+  const rawMin = Math.min(...all)
+  const rawMax = Math.max(...all)
+  const range = Math.max(1, rawMax - rawMin)
+  let step = niceStep(range / 4)
+  let min = Math.floor(rawMin / step) * step
+  let top = Math.ceil(rawMax / step) * step
+  if (Math.round((top - min) / step) > 4) {
+    step = niceStep(range / 2)
+    min = Math.floor(rawMin / step) * step
+    top = Math.ceil(rawMax / step) * step
+  }
+  if (top <= min) top = min + step
+  const yTicks: number[] = []
+  for (let value = min; value <= top + step / 2; value += step) yTicks.push(Math.round(value * 100) / 100)
+  const yGrid = yTicks.map((value) => {
+    const y = padTop + (1 - (value - min) / (top - min)) * plotH
+    return `<line class="chart-grid" x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}"/><text class="chart-label" x="${padLeft - 7}" y="${y + 3}" text-anchor="end">${compactMoney(value)}</text>`
+  }).join('')
+  const xStep = plotW / Math.max(1, depth - 1)
+  const total = 5
+  const xIndexes: number[] = []
+  for (let index = 0; index < total; index += 1) xIndexes.push(Math.round(((depth - 1) * index) / (total - 1)))
+  const xGrid = xIndexes.map((index) => {
+    const x = padLeft + index * xStep
+    return `<line class="chart-grid" x1="${x}" y1="${height - padBottom}" x2="${x}" y2="${height - padBottom + 4}"/><text class="chart-label" x="${x}" y="${height - padBottom + 18}" text-anchor="middle">Замер №${index + 1}</text>`
+  }).join('')
+  const lines = MATERIALS.map((material) => {
+    const values = history[material.id]
+    const points = Array.from({ length: depth }, (_, index) => {
+      const value = values[index] ?? values[values.length - 1] ?? 0
+      return `${padLeft + index * xStep},${padTop + (1 - (value - min) / (top - min)) * plotH}`
+    }).join(' ')
+    return `<polyline class="chart-line price-${material.id}" points="${points}"/>`
+  }).join('')
+  return `<svg class="chart" viewBox="0 0 ${width} ${height}" role="img"><line class="chart-grid" x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${height - padBottom}"/><line class="chart-grid" x1="${padLeft}" y1="${height - padBottom}" x2="${width - padRight}" y2="${height - padBottom}"/>${yGrid}${xGrid}${lines}</svg>`
+}
+
 function financeStats(state: GameState) {
   const completed = state.completed
   const revenue = completed.reduce((sum, project) => sum + project.job.budget - project.penalty, 0)
@@ -132,10 +202,12 @@ export function renderReport(ctx: ViewContext): string {
     </section>
     <div class="report-grid">
       <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Динамика</div><h2>Капитал и денежные средства</h2></div></div>${lineChart(state.financeHistory, [{ key: 'capital', label: 'Капитал', className: 'capital' }, { key: 'cash', label: 'Деньги', className: 'cash' }])}<div class="chart-legend"><span><i class="legend-dot capital"></i>Капитал</span><span><i class="legend-dot cash"></i>Деньги</span></div></section>
+      <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Рынок</div><h2>Цены на материалы</h2></div></div>${priceChart(state.priceHistory)}<div class="chart-legend price-legend">${MATERIALS.map((material) => `<span><i class="legend-dot price-${material.id}"></i>${material.name}</span>`).join('')}</div></section>
       <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Репутация</div><h2>Динамика доверия</h2></div></div>${lineChart(state.financeHistory, [{ key: 'reputation', label: 'Репутация', className: 'reputation' }])}</section>
       <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Сданные объекты</div><h2>Выручка и прибыль</h2></div>${badge('последние 10', 'info')}</div>${projectBars(state.completed)}<div class="chart-legend"><span><i class="legend-dot revenue"></i>Выручка</span><span><i class="legend-dot profit"></i>Прибыль</span></div></section>
       <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Затраты</div><h2>Структура расходов</h2></div></div>${costStructure(state.completed)}<p class="field-hint">Всего прямых затрат: ${money(direct)}</p></section>
       <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Портфель</div><h2>Типы объектов</h2></div></div>${buildingStats(state.completed)}</section>
+      <section class="card report-card wide"><div class="section-title compact"><div><div class="eyebrow">Доходность</div><h2>Прибыль по типам объектов</h2></div>${badge('за всё время', 'info')}</div>${buildingMarginStats(state.completed)}</section>
       <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Сезон</div><h2>${season.name}</h2></div>${badge(seasonGoalMet(state) ? 'цель выполнена' : `день ${state.day}/${BALANCE.seasonDays}`, seasonGoalMet(state) ? 'success' : 'info')}</div><p>${seasonEffectText(state) || 'Особых условий нет'}</p>${progress(capitalProgress(state), 'Капитал')}${progress(state.reputation / season.goal.reputation, 'Репутация')}${progress(state.seasonCompleted / season.goal.completed, 'Объекты')}</section>
       <section class="card report-card"><div class="section-title compact"><div><div class="eyebrow">Компания</div><h2>${status.name}</h2></div></div>${progress(status.progress, 'До следующего статуса')}<dl class="cost-list"><div><dt>Лучший объект</dt><dd>${stats.best ? `${buildingById(stats.best.job.building).name} · ${money(stats.best.profit)}` : '—'}</dd></div><div><dt>Просроченных сдач</dt><dd>${stats.late}</dd></div><div><dt>Техника</dt><dd>${state.equipment.length} ед.</dd></div><div><dt>Обслуживание</dt><dd>${money(equipmentMaintenance(state) + warehouseStorageFee(state))} / день</dd></div><div><dt>Сумма продаж техники</dt><dd>${state.equipmentSold} ед.</dd></div></dl></section>
     </div>`

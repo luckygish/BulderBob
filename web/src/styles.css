@@ -684,6 +684,13 @@ button.company-chip:hover { background: rgba(255,255,255,.085); }
 .chart-line.capital { stroke: var(--teal); }
 .chart-line.cash { stroke: var(--orange); }
 .chart-line.reputation { stroke: var(--blue); }
+.chart-line.price-concrete { stroke: var(--orange); }
+.chart-line.price-rebar { stroke: var(--blue); }
+.chart-line.price-lumber { stroke: var(--teal); }
+.chart-line.price-insulation { stroke: #8c7cc0; }
+.chart-line.price-metal_roof { stroke: #c9a14f; }
+.chart-line.price-brick { stroke: #c96f58; }
+.chart-line.price-gas_block { stroke: #6aa87d; }
 .chart-grid { stroke: #dfe6e2; stroke-width: 1; }
 .chart-label { fill: #829198; font-size: 10px; }
 .chart-legend { display: flex; gap: 18px; margin-top: 10px; color: var(--muted); font-size: 9px; }
@@ -693,6 +700,14 @@ button.company-chip:hover { background: rgba(255,255,255,.085); }
 .legend-dot.cash { background: var(--orange); }
 .legend-dot.revenue { background: var(--blue); }
 .legend-dot.profit { background: #6aa87d; }
+.legend-dot.price-concrete { background: var(--orange); }
+.legend-dot.price-rebar { background: var(--blue); }
+.legend-dot.price-lumber { background: var(--teal); }
+.legend-dot.price-insulation { background: #8c7cc0; }
+.legend-dot.price-metal_roof { background: #c9a14f; }
+.legend-dot.price-brick { background: #c96f58; }
+.legend-dot.price-gas_block { background: #6aa87d; }
+.price-legend { justify-content: flex-start; flex-wrap: wrap; }
 .chart-empty { min-height: 160px; border: 1px dashed var(--line); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); text-align: center; padding: 20px; }
 .chart-empty strong { color: var(--text); font-size: 11px; }
 .chart-empty span { font-size: 9px; }
@@ -721,6 +736,18 @@ button.company-chip:hover { background: rgba(255,255,255,.085); }
 .type-stats { display: grid; gap: 10px; }
 .type-stats > div { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line-soft); border-radius: 8px; padding: 10px; }
 .type-stats small { display: block; color: var(--muted); font-size: 8px; margin-top: 2px; }
+.margin-stats { display: grid; gap: 2px; }
+.margin-stat { display: grid; grid-template-columns: auto minmax(120px, 1fr) auto auto auto; gap: 10px; align-items: center; padding: 8px 4px; border-bottom: 1px solid var(--line-soft); }
+.margin-stat:last-child { border-bottom: none; }
+.margin-head { color: var(--muted); font-size: 9px; }
+.margin-name strong { display: block; font-size: 11px; }
+.margin-name small { color: var(--muted); font-size: 9px; }
+.margin-value { font-size: 10px; font-variant-numeric: tabular-nums; }
+.margin-value.positive { color: #6aa87d; }
+.margin-value.negative { color: #c96f58; }
+.margin-pct { font-size: 10px; text-align: right; }
+.margin-pct.positive { color: #6aa87d; }
+.margin-pct.negative { color: #c96f58; }
 .report-card .progress-wrap { margin-top: 10px; }
 
 @media (max-width: 900px) {

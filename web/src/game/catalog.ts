@@ -142,6 +142,45 @@ export const BUILDINGS: BuildingDef[] = [
       finish({ insulation: 260, lumber: 200 }, 135),
     ],
   },
+  {
+    id: 'school', name: 'Школа', short: 'ШК', budgetMin: 8_500_000, budgetMax: 12_000_000, minReputation: 70, requiredCrews: 2, reputationReward: 7, requiredLicense: 'city',
+    stages: [
+      foundation(160, 65, 75),
+      walls('Кладка стен', { gas_block: 900, concrete: 80 }, 110, ['manipulator']),
+      roof(260, 80, 70, 85, ['crane']),
+      finish({ insulation: 110, lumber: 90 }, 90),
+    ],
+  },
+  {
+    id: 'sports_complex', name: 'Спорткомплекс', short: 'ФОК', budgetMin: 13_000_000, budgetMax: 19_000_000, minReputation: 70, requiredCrews: 2, reputationReward: 8, requiredLicense: 'city',
+    stages: [
+      foundation(210, 90, 95),
+      walls('Монолитный каркас', { concrete: 190, rebar: 170 }, 150, ['crane']),
+      roof(340, 100, 120, 115, ['crane']),
+      walls('Трибуны и перегородки', { concrete: 140, brick: 400 }, 120, ['manipulator']),
+      finish({ insulation: 140, lumber: 120 }, 110),
+    ],
+  },
+  {
+    id: 'bridge', name: 'Мост', short: 'МТ', budgetMin: 16_000_000, budgetMax: 24_000_000, minReputation: 80, requiredCrews: 2, reputationReward: 8, requiredLicense: 'region',
+    stages: [
+      foundation(300, 130, 120),
+      walls('Опоры моста', { concrete: 260, rebar: 220 }, 160, ['crane']),
+      walls('Пролётное строение', { lumber: 300, rebar: 180 }, 170, ['crane']),
+      walls('Дорожное полотно', { concrete: 320, rebar: 120, brick: 500 }, 150, ['excavator']),
+      finish({ insulation: 60, lumber: 60 }, 70),
+    ],
+  },
+  {
+    id: 'ice_palace', name: 'Ледовый дворец', short: 'ЛД', budgetMin: 26_000_000, budgetMax: 36_000_000, minReputation: 80, requiredCrews: 2, reputationReward: 10, requiredLicense: 'region',
+    stages: [
+      foundation(300, 120, 115),
+      walls('Монолитный каркас', { concrete: 280, rebar: 240 }, 190, ['crane']),
+      roof(420, 120, 130, 145, ['crane']),
+      walls('Ледовое поле и трибуны', { concrete: 160, brick: 500 }, 130, ['manipulator']),
+      finish({ insulation: 200, lumber: 160 }, 130),
+    ],
+  },
 ]
 
 export const SUPPLIERS: Record<SupplierId, { name: string; short: string; description: string; feeRate: number; deliveryDays: number; initialPrice: number; initialStock: number }> = {
@@ -188,9 +227,9 @@ export const TECHNOLOGIES: TechDef[] = [
   { id: 'planning_1', name: 'Планирование I', branch: 'Управление', cost: 300_000, days: 2, requires: '', requiresMoney: 0, description: 'До 2 активных объектов.' },
   { id: 'seasonal_planning', name: 'Сезонное планирование', branch: 'Управление', cost: 450_000, days: 3, requires: 'planning_1', requiresMoney: 0, description: 'Сезонные дебаффы снижены на 20%.' },
   { id: 'project_coordination', name: 'Согласование проектов', branch: 'Управление', cost: 500_000, days: 3, requires: 'seasonal_planning', requiresMoney: 0, description: 'Сроки новых заказов +2 дня.' },
-  { id: 'city_license', name: 'Городская лицензия', branch: 'Управление', cost: 1_600_000, days: 5, requires: 'planning_1', requiresMoney: 0, requiresReputation: 70, requiresCapital: 10_000_000, description: 'Открывает контракты: больница, детский сад, парк.' },
+  { id: 'city_license', name: 'Городская лицензия', branch: 'Управление', cost: 1_600_000, days: 5, requires: 'planning_1', requiresMoney: 0, requiresReputation: 70, requiresCapital: 10_000_000, description: 'Открывает контракты: больница, детский сад, парк, школа, спорткомплекс.' },
   { id: 'pr_department', name: 'PR-департамент', branch: 'Управление', cost: 1_200_000, days: 5, requires: 'city_license', requiresMoney: 0, description: '+2 репутации за каждый 5-й сданный объект.' },
-  { id: 'region_license', name: 'Областная лицензия', branch: 'Управление', cost: 3_200_000, days: 7, requires: 'city_license', requiresMoney: 0, requiresReputation: 80, requiresCapital: 15_000_000, description: 'Открывает контракты: ТЭЦ, торговые склады, дороги.' },
+  { id: 'region_license', name: 'Областная лицензия', branch: 'Управление', cost: 3_200_000, days: 7, requires: 'city_license', requiresMoney: 0, requiresReputation: 80, requiresCapital: 15_000_000, description: 'Открывает контракты: ТЭЦ, торговые склады, дороги, мост, ледовый дворец.' },
   { id: 'worker_training', name: 'Обучение рабочих', branch: 'Персонал', cost: 200_000, days: 2, requires: '', requiresMoney: 0, description: '+0.25 эффективности каждому работнику.' },
   { id: 'manpower_reserve', name: 'Кадровый резерв', branch: 'Персонал', cost: 350_000, days: 3, requires: 'worker_training', requiresMoney: 0, description: '+0.15 эффективности каждому работнику.' },
   { id: 'night_coordinator', name: 'Ночной координатор', branch: 'Персонал', cost: 400_000, days: 3, requires: 'worker_training', requiresMoney: 0, description: 'Ночной тариф снижен на 15%.' },

@@ -1,5 +1,5 @@
 export type MaterialId = 'concrete' | 'rebar' | 'lumber' | 'insulation' | 'metal_roof' | 'brick' | 'gas_block'
-export type BuildingId = 'reconstruction' | 'frame_house' | 'brick_house' | 'gas_block_house' | 'hangar' | 'tv_tower' | 'apartments' | 'resort_house' | 'park' | 'kindergarten' | 'hospital' | 'roads' | 'warehouses' | 'thermal_plant'
+export type BuildingId = 'reconstruction' | 'frame_house' | 'brick_house' | 'gas_block_house' | 'hangar' | 'tv_tower' | 'apartments' | 'resort_house' | 'park' | 'kindergarten' | 'hospital' | 'roads' | 'warehouses' | 'thermal_plant' | 'school' | 'sports_complex' | 'bridge' | 'ice_palace'
 export type SupplierId = 'north' | 'south'
 export type WorkerType = 'handyman' | 'specialist' | 'foreman'
 export type SkillId = 'alcohol' | 'tudyaga' | 'owl' | 'thief' | 'thrifty' | 'mentor' | 'logistician' | 'technologist' | 'sluggish' | 'expensive'

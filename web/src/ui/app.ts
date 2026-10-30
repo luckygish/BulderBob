@@ -203,7 +203,7 @@ export class App {
     this.openModal(`<div class="modal-icon">${icon('hardhat')}</div>
       <div class="eyebrow">Начало карьеры</div>
       <h2>Привет!</h2>
-      <p>Ты начинающий прораб Bob Bulder. Ты наконец накопил свой стартовый капитал для своего дела. Удачи!</p>
+      <p>Ты — прораб Балдур Боб. Двадцать лет ты вкалывал на чужие компании, а теперь накопил стартовый капитал — пора открывать собственное дело. Впереди десять сезонов стройки, бригад и конкуренции. Построй что-то великое!</p>
       <div class="button-row modal-actions"><button class="btn btn-primary" data-action="welcome-start">За работу!</button></div>`)
   }
 

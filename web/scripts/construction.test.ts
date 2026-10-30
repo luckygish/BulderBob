@@ -20,11 +20,15 @@ const MANHOUR_TOTALS: Record<string, number> = {
   roads: 541,
   warehouses: 696,
   thermal_plant: 915,
+  school: 415,
+  sports_complex: 679,
+  bridge: 772,
+  ice_palace: 818,
 }
 
-const CRANE_BUILDINGS = new Set(['hangar', 'tv_tower', 'apartments', 'kindergarten', 'hospital', 'warehouses', 'thermal_plant'])
-const MANIPULATOR_BUILDINGS = new Set(['resort_house', 'park', 'kindergarten', 'hospital'])
-const EXCAVATOR_BUILDINGS = new Set(['roads', 'warehouses'])
+const CRANE_BUILDINGS = new Set(['hangar', 'tv_tower', 'apartments', 'kindergarten', 'hospital', 'warehouses', 'thermal_plant', 'school', 'sports_complex', 'bridge', 'ice_palace'])
+const MANIPULATOR_BUILDINGS = new Set(['resort_house', 'park', 'kindergarten', 'hospital', 'school', 'sports_complex', 'ice_palace'])
+const EXCAVATOR_BUILDINGS = new Set(['roads', 'warehouses', 'bridge'])
 
 function assignForStage(state: GameState, project: Project): void {
   const def = buildingById(project.job.building)
