@@ -44,7 +44,7 @@ function rent(state: GameState, id: EquipmentId): EquipmentAsset {
   return state.equipment.at(-1)!
 }
 
-function beginSimulation(buildingId: string): { state: GameState; project: Project } {
+function beginSimulationNoBuy(buildingId: string): { state: GameState; project: Project } {
   const state = createNewGame(1_234)
   state.money = 50_000_000
   state.reputation = 90
@@ -78,9 +78,14 @@ function beginSimulation(buildingId: string): { state: GameState; project: Proje
   if (MANIPULATOR_BUILDINGS.has(buildingId)) rent(state, 'manipulator')
   if (EXCAVATOR_BUILDINGS.has(buildingId)) rent(state, 'excavator')
 
-  const bought = buyMissingForProject(state, project.id, 'north')
-  assert.equal(bought.ok, true, `${def.id}: ${bought.message}`)
   assignEquipment(state, project, mixer.assetId)
+  return { state, project }
+}
+
+function beginSimulation(buildingId: string): { state: GameState; project: Project } {
+  const { state, project } = beginSimulationNoBuy(buildingId)
+  const bought = buyMissingForProject(state, project.id, 'north')
+  assert.equal(bought.ok, true, `${buildingId}: ${bought.message}`)
   return { state, project }
 }
 
@@ -116,6 +121,36 @@ describe('стройка: трудоёмкость этапов увеличен
 
   it('сроки заказов автопродлены и соблюдаются для всех зданий', () => {
     for (const building of BUILDINGS) simulate(building.id)
+  })
+})
+
+describe('стройка: сообщения о нехватке материалов', () => {
+  it('startFullProject без материалов перечисляет этапы и материалы', () => {
+    const { state, project } = beginSimulationNoBuy('reconstruction')
+    const result = startFullProject(state, project.id)
+    assert.equal(result.ok, false)
+    assert.match(result.message, /Stage 1 "Foundation":/)
+    assert.match(result.message, /Concrete/)
+    assert.match(result.message, /Rebar/)
+    assert.match(result.message, /Walls & frame/)
+  })
+
+  it('startStage при недоукомплектованном этапе сообщает недостающий материал', () => {
+    const { state, project } = beginSimulationNoBuy('reconstruction')
+    const result = startStage(state, project)
+    assert.equal(result.ok, false)
+    assert.match(result.message, /"Foundation" is missing/)
+    assert.match(result.message, /Concrete/)
+    assert.match(result.message, /Rebar 3/)
+  })
+
+  it('buyMissingForProject сообщает нужное и доступное количество', () => {
+    const { state, project } = beginSimulationNoBuy('reconstruction')
+    state.suppliers.north.concrete = []
+    const result = buyMissingForProject(state, project.id, 'north')
+    assert.equal(result.ok, false)
+    assert.match(result.message, /need \d+ m³ Concrete/)
+    assert.match(result.message, /only \d+ m³ in stock/)
   })
 })
 

@@ -1,6 +1,6 @@
 import { BALANCE } from './balance'
 import { MATERIALS, PROVISIONS, buildingById, materialById, techById } from './catalog'
-import { addLog, addProjectInventory, allocateStage, crewHourly, frontPrice, hasStageMaterials, inventoryQty, isDebtBlocked, isResearched, makeStages, maxCrews, maxProjects, netWorth, projectLogisticsRate, projectReservedQty, purchaseMaterial, quoteMaterial, requiredCrews, requiredMaterials, spend, startStage, stockQty, takeFromInventory } from './engine'
+import { addLog, addProjectInventory, allocateStage, crewHourly, formatMissing, frontPrice, hasStageMaterials, inventoryQty, isDebtBlocked, isResearched, makeStages, maxCrews, maxProjects, netWorth, projectLogisticsRate, projectReservedQty, purchaseMaterial, quoteMaterial, requiredCrews, requiredMaterials, spend, stageMissingMaterials, startStage, stockQty, takeFromInventory } from './engine'
 import { nextId } from './rng'
 import { seasonLogisticsRate, seasonProvisionRate } from './seasons'
 import type { ActionResult, GameState, MaterialId, Project, ProvisionId, Speed, SupplierId } from './types'
@@ -72,7 +72,8 @@ export function allocateProjectStage(state: GameState, projectId: string): Actio
   const project = state.projects.find((item) => item.id === projectId)
   if (!project) return { ok: false, message: 'Project not found.' }
   const ready = allocateStage(state, project, project.currentStage)
-  return { ok: ready, message: ready ? 'Stage fully supplied.' : 'Some materials moved; not enough left in stock.' }
+  if (ready) return { ok: true, message: 'Stage fully supplied.' }
+  return { ok: false, message: `Not enough for the stage: ${formatMissing(stageMissingMaterials(project, project.currentStage))}.` }
 }
 
 export function startFullProject(state: GameState, projectId: string): ActionResult {
@@ -80,7 +81,13 @@ export function startFullProject(state: GameState, projectId: string): ActionRes
   if (!project) return { ok: false, message: 'Project not found.' }
   if (project.started) return { ok: false, message: 'Construction already started.' }
   const missing = missingForProject(state, project)
-  if (Object.keys(missing).length > 0) return { ok: false, message: 'To start all stages, buy the missing materials.' }
+  if (Object.keys(missing).length > 0) {
+    const stages = missingByStage(state, project)
+    return {
+      ok: false,
+      message: `Missing materials to start all stages:\n${stages.map((stage) => `Stage ${stage.index + 1} "${stage.name}": ${formatMissing(stage.items)}`).join('\n')}`,
+    }
+  }
   project.stages.forEach((_, index) => allocateStage(state, project, index))
   project.autoAdvance = true
   return startStage(state, project)
@@ -104,6 +111,24 @@ export function missingForProject(state: GameState, project: Project): Partial<R
   return missing
 }
 
+function missingByStage(state: GameState, project: Project): { index: number; name: string; items: [MaterialId, number][] }[] {
+  const budget: Partial<Record<MaterialId, number>> = { ...missingForProject(state, project) }
+  const result: { index: number; name: string; items: [MaterialId, number][] }[] = []
+  const def = buildingById(project.job.building)
+  for (const [index, stageDef] of def.stages.entries()) {
+    if (project.stages[index].status === 'completed') continue
+    const items: [MaterialId, number][] = []
+    for (const [material, required] of Object.entries(stageDef.materials) as [MaterialId, number][]) {
+      const staged = project.stages[index].stock[material]?.qty ?? 0
+      const raw = Math.max(0, required - staged)
+      const take = Math.min(raw, budget[material] ?? 0)
+      if (take > 0) { items.push([material, take]); budget[material] = Math.max(0, (budget[material] ?? 0) - take) }
+    }
+    if (items.length) result.push({ index, name: stageDef.name, items })
+  }
+  return result
+}
+
 export function buyMissingForProject(state: GameState, projectId: string, supplier: SupplierId): ActionResult {
   const project = state.projects.find((item) => item.id === projectId)
   if (!project) return { ok: false, message: 'Project not found.' }
@@ -114,7 +139,11 @@ export function buyMissingForProject(state: GameState, projectId: string, suppli
   const feeMultiplier = 1 + projectLogisticsRate(state, project) + seasonLogisticsRate(state)
   let total = 0
   for (const [material, qty] of entries) {
-    if (stockQty(state, material, supplier) < qty) return { ok: false, message: `Not enough at the selected yard: ${materialById(material).name}.` }
+    const stock = stockQty(state, material, supplier)
+    if (stock < qty) {
+      const def = materialById(material)
+      return { ok: false, message: `Not enough at the yard: need ${qty.toLocaleString('en-US')} ${def.unit} ${def.name}, only ${stock.toLocaleString('en-US')} ${def.unit} in stock.` }
+    }
     const quote = quoteMaterial(state, material, qty, supplier)
     total += quote.cost + Math.round(quote.fee * feeMultiplier)
   }

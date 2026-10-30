@@ -402,6 +402,18 @@ export function hasStageMaterials(project: Project, stageIndex: number): boolean
   return (Object.entries(def.materials) as [MaterialId, number][]).every(([material, qty]) => (project.stages[stageIndex].stock[material]?.qty ?? 0) >= qty)
 }
 
+export function stageMissingMaterials(project: Project, stageIndex: number): [MaterialId, number][] {
+  const def = buildingById(project.job.building).stages[stageIndex]
+  const stage = project.stages[stageIndex]
+  return (Object.entries(def.materials) as [MaterialId, number][])
+    .map(([material, required]) => [material, Math.max(0, required - (stage.stock[material]?.qty ?? 0))] as [MaterialId, number])
+    .filter(([, qty]) => qty > 0)
+}
+
+export function formatMissing(missing: [MaterialId, number][]): string {
+  return missing.map(([material, qty]) => `${materialById(material).name} ${qty.toLocaleString('en-US')} ${materialById(material).unit}`).join(', ')
+}
+
 export function missingProvisions(state: GameState): Partial<Record<string, number>> {
   const missing: Partial<Record<string, number>> = {}
   for (const item of PROVISIONS) {
@@ -450,7 +462,10 @@ export function startStage(state: GameState, project: Project): ActionResult {
   }
   if (!hasProvisions(state)) return { ok: false, message: 'Buy a separate provisions set for each active project.' }
   allocateStage(state, project, project.currentStage)
-  if (!hasStageMaterials(project, project.currentStage)) return { ok: false, message: 'First supply the stage with materials.' }
+  if (!hasStageMaterials(project, project.currentStage)) {
+    const stage = buildingById(project.job.building).stages[project.currentStage]
+    return { ok: false, message: `Stage "${stage.name}" is missing: ${formatMissing(stageMissingMaterials(project, project.currentStage))}.` }
+  }
   project.stages[project.currentStage].status = 'in_progress'
   project.stages[project.currentStage].progress = 0
   project.started = true
