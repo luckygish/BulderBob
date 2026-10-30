@@ -1,6 +1,6 @@
 import { BALANCE } from './balance'
 import { MATERIALS, PROVISIONS, buildingById, materialById, techById } from './catalog'
-import { addLog, addProjectInventory, allocateStage, crewHourly, formatMissing, frontPrice, hasStageMaterials, inventoryQty, isDebtBlocked, isResearched, makeStages, maxCrews, maxProjects, netWorth, projectLogisticsRate, projectReservedQty, purchaseMaterial, quoteMaterial, requiredCrews, requiredMaterials, spend, stageMissingMaterials, startStage, stockQty, takeFromInventory } from './engine'
+import { addLog, addProjectInventory, allocateStage, autoAssignResources, crewHourly, formatMissing, frontPrice, hasStageMaterials, inventoryQty, isDebtBlocked, isResearched, makeStages, MATERIAL_EPSILON, maxCrews, maxCrewSize, maxProjects, netWorth, projectLogisticsRate, projectReservedQty, purchaseMaterial, quoteMaterial, requiredCrews, requiredMaterials, spend, stageMissingMaterials, startStage, stockQty, takeFromInventory } from './engine'
 import { nextId } from './rng'
 import { seasonLogisticsRate, seasonProvisionRate } from './seasons'
 import type { ActionResult, GameState, MaterialId, Project, ProvisionId, Speed, SupplierId } from './types'
@@ -12,13 +12,13 @@ export function takeJob(state: GameState, jobId: string): ActionResult {
   if (!job) return { ok: false, message: 'Order is no longer available.' }
   const def = buildingById(job.building)
   if (job.special && state.reputation < def.minReputation) return { ok: false, message: `Special projects require ${def.minReputation} reputation.` }
+  if (def.minSiteWorkers !== undefined && maxCrewSize(state) * maxCrews(state) < def.minSiteWorkers) {
+    return { ok: false, message: `This contract needs ${def.minSiteWorkers} workers on site — research Build squad first (crews up to ${BALANCE.maxCrewSizeSquad}).` }
+  }
   state.jobs = state.jobs.filter((item) => item.id !== jobId)
-  const usedCrews = new Set(state.projects.flatMap((project) => project.crewIds))
-  let freeCrew = -1
-  for (let i = 0; i < maxCrews(state); i += 1) if (!usedCrews.has(i)) { freeCrew = i; break }
   const project: Project = {
     id: nextId(state, 'project'), job, stages: makeStages(job.building), currentStage: 0,
-    crewIds: freeCrew >= 0 ? [freeCrew] : [], equipmentAssetId: null, reserved: {}, autoAdvance: false, started: false,
+    crewIds: [], equipmentAssetId: null, reserved: {}, autoAdvance: false, started: false,
     materialCost: 0, laborCost: 0, laborPaid: 0, logisticsCost: 0, equipmentCost: 0, rentCost: 0,
     factoringFee: 0, advance: 0, penalty: 0, totalHours: 0, completedDay: null, profit: 0,
   }
@@ -28,13 +28,15 @@ export function takeJob(state: GameState, jobId: string): ActionResult {
     state.money += project.advance - project.factoringFee
   }
   state.projects.push(project)
+  autoAssignResources(state, project)
   addLog(state, `Took contract "${buildingById(job.building).name}" for ${job.client}.`, 'success')
   return { ok: true, message: 'Project created. Check crew, equipment and provisions.' }
 }
 
 export function hireWorker(state: GameState, workerId: string, crewId: number): ActionResult {
   if (crewId < 0 || crewId >= maxCrews(state)) return { ok: false, message: 'This crew is not unlocked yet.' }
-  if (state.crews[crewId].workers.length >= BALANCE.maxCrewSize) return { ok: false, message: 'The crew already has 3 people.' }
+  const size = maxCrewSize(state)
+  if (state.crews[crewId].workers.length >= size) return { ok: false, message: `The crew already has ${size} people.` }
   const worker = state.candidates.find((item) => item.id === workerId)
   if (!worker) return { ok: false, message: 'Candidate already hired by another company.' }
   state.candidates = state.candidates.filter((item) => item.id !== workerId)
@@ -55,14 +57,18 @@ export function assignCrew(state: GameState, projectId: string, crewId: number, 
   const project = state.projects.find((item) => item.id === projectId)
   if (!project) return { ok: false, message: 'Project not found.' }
   if (crewId >= maxCrews(state)) return { ok: false, message: 'Crew unavailable.' }
+  project.removedCrews ??= []
   if (crewId >= 0) {
+    project.removedCrews = project.removedCrews.filter((id) => id !== crewId)
     for (const other of state.projects) {
       if (other.id !== project.id) other.crewIds = other.crewIds.filter((id) => id !== crewId)
     }
     project.crewIds = project.crewIds.filter((id, index) => id !== crewId && index !== slot)
     project.crewIds[slot] = crewId
   } else {
+    const removed = project.crewIds[slot]
     project.crewIds.splice(slot, 1)
+    if (removed !== undefined && removed >= 0 && !project.removedCrews.includes(removed)) project.removedCrews.push(removed)
   }
   project.crewIds = [...new Set(project.crewIds.filter((id) => id >= 0))].slice(0, requiredCrews(project))
   return { ok: true, message: crewId < 0 ? 'Crew removed from project.' : `Crew #${crewId + 1} assigned.` }
@@ -106,7 +112,7 @@ export function missingForProject(state: GameState, project: Project): Partial<R
     const allocated = project.stages.reduce((sum, stage) => sum + (stage.stock[material]?.qty ?? 0), 0)
     const reserved = projectReservedQty(project, material)
     const need = Math.max(0, total - allocated - reserved - inventoryQty(state, material))
-    if (need > 0) missing[material] = need
+    if (need > MATERIAL_EPSILON) missing[material] = need
   }
   return missing
 }
@@ -154,7 +160,7 @@ export function buyMissingForProject(state: GameState, projectId: string, suppli
     purchaseMaterial(state, material, qty, supplier, project.id, feeMultiplier)
   }
   project.logisticsCost += fees
-  return { ok: true, message: `Purchase of $${total.toLocaleString('en-US')} completed and reserved for the project.` }
+  return { ok: true, message: `Purchase of $${total.toLocaleString('en-US')} completed; delivery is on its way to the project.` }
 }
 
 export function restockProjectFromWarehouse(state: GameState, projectId: string): ActionResult {

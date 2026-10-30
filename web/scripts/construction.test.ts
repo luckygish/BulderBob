@@ -6,24 +6,24 @@ import { assignCrew, buyMissingForProject, buyProvision, hireWorker, startFullPr
 import type { EquipmentAsset, EquipmentId, GameState, Project } from '../src/game/types'
 
 const MANHOUR_TOTALS: Record<string, number> = {
-  reconstruction: 57,
-  frame_house: 203,
-  brick_house: 286,
-  gas_block_house: 201,
-  hangar: 381,
-  tv_tower: 599,
-  apartments: 547,
-  resort_house: 300,
-  park: 236,
-  kindergarten: 339,
-  hospital: 750,
-  roads: 541,
-  warehouses: 696,
-  thermal_plant: 915,
-  school: 415,
-  sports_complex: 679,
-  bridge: 772,
-  ice_palace: 818,
+  reconstruction: 69,
+  frame_house: 243,
+  brick_house: 342,
+  gas_block_house: 241,
+  hangar: 456,
+  tv_tower: 717,
+  apartments: 656,
+  resort_house: 359,
+  park: 340,
+  kindergarten: 487,
+  hospital: 1_076,
+  roads: 778,
+  warehouses: 1_002,
+  thermal_plant: 1_316,
+  school: 596,
+  sports_complex: 976,
+  bridge: 1_110,
+  ice_palace: 1_175,
 }
 
 const CRANE_BUILDINGS = new Set(['hangar', 'tv_tower', 'apartments', 'kindergarten', 'hospital', 'warehouses', 'thermal_plant', 'school', 'sports_complex', 'bridge', 'ice_palace'])
@@ -44,6 +44,17 @@ function rent(state: GameState, id: EquipmentId): EquipmentAsset {
   return state.equipment.at(-1)!
 }
 
+function waitForDeliveries(state: GameState): void {
+  let guard = 0
+  while (state.deliveries.length > 0 && guard < 5) {
+    if (state.paused) state.paused = false
+    if (state.event) state.event = null
+    tickHour(state)
+    guard += 1
+  }
+  assert.equal(state.deliveries.length, 0, 'поставки не прибыли за время ожидания')
+}
+
 function beginSimulationNoBuy(buildingId: string): { state: GameState; project: Project } {
   const state = createNewGame(1_234)
   state.money = 50_000_000
@@ -54,8 +65,10 @@ function beginSimulationNoBuy(buildingId: string): { state: GameState; project: 
     bot.projects = []
   }
   const def = buildingById(buildingId)
-  const requiredCrews = def.requiredCrews ?? 1
-  if (requiredCrews === 2) state.research.prof_standards = { status: 'done', progress: 0 }
+  const crewCount = def.requiredCrews ?? 1
+  if (crewCount === 2) state.research.prof_standards = { status: 'done', progress: 0 }
+  const targetSize = def.minSiteWorkers ? Math.ceil(def.minSiteWorkers / crewCount) : 3
+  if (def.minSiteWorkers) state.research.build_squad = { status: 'done', progress: 0 }
 
   const job = createJob(state, def.id)
   state.jobs.push(job)
@@ -63,14 +76,14 @@ function beginSimulationNoBuy(buildingId: string): { state: GameState; project: 
   assert.equal(taken.ok, true, taken.message)
   const project = state.projects[0]
 
-  for (let crew = 0; crew < requiredCrews; crew += 1) {
-    while (state.crews[crew].workers.length < 3 && state.candidates.length > 0) {
+  for (let crew = 0; crew < crewCount; crew += 1) {
+    while (state.crews[crew].workers.length < targetSize && state.candidates.length > 0) {
       const worker = state.candidates[0]
       hireWorker(state, worker.id, crew)
     }
-    assert.equal(state.crews[crew].workers.length, 3, `${def.id}: бригада ${crew} не укомплектована`)
+    assert.equal(state.crews[crew].workers.length, targetSize, `${def.id}: бригада ${crew} не укомплектована`)
   }
-  for (let crew = 0; crew < requiredCrews; crew += 1) assignCrew(state, project.id, crew, crew)
+  for (let crew = 0; crew < crewCount; crew += 1) assignCrew(state, project.id, crew, crew)
   for (const provision of PROVISIONS) assert.equal(buyProvision(state, provision.id).ok, true)
 
   const mixer = rent(state, 'mixer')
@@ -84,9 +97,19 @@ function beginSimulationNoBuy(buildingId: string): { state: GameState; project: 
 
 function beginSimulation(buildingId: string): { state: GameState; project: Project } {
   const { state, project } = beginSimulationNoBuy(buildingId)
-  const bought = buyMissingForProject(state, project.id, 'north')
-  assert.equal(bought.ok, true, `${buildingId}: ${bought.message}`)
-  return { state, project }
+  let guard = 0
+  while (guard < 240) {
+    const bought = buyMissingForProject(state, project.id, 'north')
+    if (bought.ok) {
+      waitForDeliveries(state)
+      return { state, project }
+    }
+    if (state.paused) state.paused = false
+    if (state.event) state.event = null
+    tickHour(state)
+    guard += 1
+  }
+  assert.fail(`${buildingId}: не удалось закупить материалы за ${guard} ходов`)
 }
 
 function simulate(buildingId: string): void {
@@ -149,8 +172,72 @@ describe('стройка: сообщения о нехватке материа�
     state.suppliers.north.concrete = []
     const result = buyMissingForProject(state, project.id, 'north')
     assert.equal(result.ok, false)
-    assert.match(result.message, /need \d+ m³ Concrete/)
-    assert.match(result.message, /only \d+ m³ in stock/)
+    assert.match(result.message, /need [\d.]+ m³ Concrete/)
+    assert.match(result.message, /only [\d.]+ m³ in stock/)
+  })
+})
+
+describe('стройка: автообеспечение ресурсами', () => {
+  it('взятие заказа подставляет свободную бригаду и свободную требуемую технику', () => {
+    const state = createNewGame(333)
+    state.money = 50_000_000
+    while (state.crews[0].workers.length < 3 && state.candidates.length > 0) {
+      const worker = state.candidates[0]
+      assert.equal(hireWorker(state, worker.id, 0).ok, true)
+    }
+    assert.equal(state.crews[0].workers.length, 3, 'бригада не укомплектована')
+    acquireEquipment(state, 'mixer', 'rented', 100)
+    const muffler = state.equipment.at(-1)
+    assert.ok(muffler, 'нет арендованной техники')
+
+    const job = createJob(state, 'reconstruction')
+    state.jobs.push(job)
+    assert.equal(takeJob(state, job.id).ok, true)
+    const project = state.projects[0]
+    assert.equal(project.crewIds.length, 1, 'свободная бригада не подставлена')
+    assert.equal(project.crewIds[0], 0)
+    assert.equal(project.equipmentAssetId, muffler!.assetId, 'свободная требуемая техника не подставлена')
+    assert.equal(state.equipment.find((item) => item.assetId === project.equipmentAssetId)?.projectId, project.id)
+  })
+
+  it('снятая с проекта бригада не возвращается автоматически', () => {
+    const state = createNewGame(334)
+    state.money = 50_000_000
+    state.research.prof_standards = { status: 'done', progress: 0 }
+    for (let crew = 0; crew < 2; crew += 1) {
+      while (state.crews[crew].workers.length < 3 && state.candidates.length > 0) {
+        const worker = state.candidates[0]
+        hireWorker(state, worker.id, crew)
+      }
+    }
+    const job = createJob(state, 'kindergarten')
+    state.jobs.push(job)
+    assert.equal(takeJob(state, job.id).ok, true)
+    const project = state.projects[0]
+    assignCrew(state, project.id, 0, 0)
+    assignCrew(state, project.id, 1, 1)
+    assert.equal(assignCrew(state, project.id, -1, 1).ok, true)
+    assert.equal(project.crewIds.length, 1, 'слот должен остаться пустым после снятия')
+  })
+
+  it('снятая бригада не возвращается при повторном startStage', () => {
+    const state = createNewGame(335)
+    state.money = 50_000_000
+    while (state.crews[0].workers.length < 3 && state.candidates.length > 0) {
+      const worker = state.candidates[0]
+      assert.equal(hireWorker(state, worker.id, 0).ok, true)
+    }
+    acquireEquipment(state, 'mixer', 'rented', 100)
+    const job = createJob(state, 'reconstruction')
+    state.jobs.push(job)
+    assert.equal(takeJob(state, job.id).ok, true)
+    const project = state.projects[0]
+    assert.equal(project.crewIds.length, 1, 'свободная бригада не подставлена')
+    assert.equal(assignCrew(state, project.id, -1, 0).ok, true)
+    assert.equal(project.crewIds.length, 0)
+    startStage(state, project)
+    assert.equal(project.crewIds.length, 0, 'снятая бригада не должна вернуться на повторный startStage')
+    assert.equal(projectCrewsReady(state, project), false)
   })
 })
 

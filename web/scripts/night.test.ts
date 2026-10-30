@@ -14,6 +14,17 @@ function quietBots(state: GameState): void {
   }
 }
 
+function waitForDeliveries(state: GameState): void {
+  let guard = 0
+  while (state.deliveries.length > 0 && guard < 5) {
+    if (state.paused) state.paused = false
+    if (state.event) state.event = null
+    tickHour(state)
+    guard += 1
+  }
+  assert.equal(state.deliveries.length, 0, 'поставки не прибыли за время ожидания')
+}
+
 function setup(seed: number, owl = false, automation = false, building: BuildingId = 'reconstruction'): { state: GameState; project: Project } {
   const state = createNewGame(seed)
   state.money = 50_000_000
@@ -37,6 +48,7 @@ function setup(seed: number, owl = false, automation = false, building: Building
   acquireEquipment(state, 'mixer', 'rented', 400)
   const asset = state.equipment.at(-1)!
   assert.equal(buyMissingForProject(state, project.id, 'north').ok, true)
+  waitForDeliveries(state)
   assignEquipment(state, project, asset.assetId)
   const started = startFullProject(state, project.id)
   assert.equal(started.ok, true, started.message)

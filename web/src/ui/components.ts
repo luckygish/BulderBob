@@ -7,7 +7,7 @@ import avatar5 from '../../assets/avatar_5.png'
 import avatar6 from '../../assets/avatar_6.png'
 
 export const money = (value: number): string => `$${Math.round(value).toLocaleString('en-US')}`
-export const number = (value: number): string => Math.round(value).toLocaleString('en-US')
+export const number = (value: number): string => Number(value).toLocaleString('en-US', { maximumFractionDigits: 1 })
 export const percent = (value: number): string => `${Math.round(value * 100)}%`
 export const compactMoney = (value: number): string => {
   const abs = Math.abs(value)

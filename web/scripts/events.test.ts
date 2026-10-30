@@ -1,13 +1,13 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { EVENTS } from '../src/game/events'
+import { EVENTS, INCIDENTS } from '../src/game/events'
 import { EVENT_ART } from '../src/ui/eventArtMap'
 import { acquireEquipment, assignEquipment, createJob, createNewGame, resolveEvent, tickHour } from '../src/game/engine'
 import { buyMissingForProject, buyProvision, hireWorker, startFullProject, takeJob, assignCrew } from '../src/game/actions'
 import { buildingById, PROVISIONS } from '../src/game/catalog'
 import type { GameState, Project } from '../src/game/types'
 
-const EFFECT_KEYS = ['cash', 'reputation', 'delayDays', 'seasonPriceBonus', 'seasonDeadlineBonus', 'seasonWageBonus']
+const EFFECT_KEYS = ['cash', 'reputation', 'delayDays', 'seasonPriceBonus', 'seasonDeadlineBonus', 'seasonWageBonus', 'cashRate']
 const IMAGES = ['wife', 'traider', 'worker', 'inspect', 'clients', 'happyman', 'happywife', 'investor', 'other', 'bulder']
 
 function freshState(): GameState {
@@ -18,6 +18,17 @@ function freshState(): GameState {
     bot.projects = []
   }
   return state
+}
+
+function waitForDeliveries(state: GameState): void {
+  let guard = 0
+  while (state.deliveries.length > 0 && guard < 5) {
+    if (state.paused) state.paused = false
+    if (state.event) state.event = null
+    tickHour(state)
+    guard += 1
+  }
+  assert.equal(state.deliveries.length, 0, 'поставки не прибыли за время ожидания')
 }
 
 function setupWorkingProject(state: GameState): Project {
@@ -33,6 +44,7 @@ function setupWorkingProject(state: GameState): Project {
   }
   assert.equal(assignCrew(state, project.id, 0, 0).ok, true)
   assert.equal(buyMissingForProject(state, project.id, 'north').ok, true)
+  waitForDeliveries(state)
   acquireEquipment(state, 'mixer', 'rented', 400)
   const mixer = state.equipment.at(-1)!
   assignEquipment(state, project, mixer.assetId)
@@ -73,14 +85,14 @@ describe('ивенты: инварианты набора', () => {
   })
 
   it('каждый id имеет портрет, ключи мапы указывают на существующие картинки', () => {
-    for (const event of EVENTS) {
+    for (const event of [...EVENTS, ...INCIDENTS]) {
       const art = EVENT_ART[event.id]
       assert.ok(art, `нет портрета для ${event.id}`)
       assert.ok(IMAGES.includes(art), `${event.id}: неизвестная картинка «${art}»`)
     }
-    assert.equal(Object.keys(EVENT_ART).length, EVENTS.length)
+    assert.equal(Object.keys(EVENT_ART).length, EVENTS.length + INCIDENTS.length)
     for (const [id, art] of Object.entries(EVENT_ART)) {
-      assert.ok(EVENTS.some((event) => event.id === id), `портрет для несуществующего ивента ${id}`)
+      assert.ok([...EVENTS, ...INCIDENTS].some((event) => event.id === id), `портрет для несуществующего ивента ${id}`)
       assert.ok(IMAGES.includes(art), `неизвестная картинка «${art}» для ${id}`)
     }
   })
@@ -204,5 +216,108 @@ describe('ивенты: новые механики сезона', () => {
     tickHour(state)
     assert.equal(state.day, 39)
     assert.equal(state.event, 'corp_final_fight')
+  })
+})
+
+describe('ЧП: инварианты набора', () => {
+  it('INCIDENTS непустой, 13 шт, id уникальны и не пересекаются с EVENTS', () => {
+    assert.equal(INCIDENTS.length, 13)
+    assert.equal(new Set(INCIDENTS.map((incident) => incident.id)).size, INCIDENTS.length)
+    for (const incident of INCIDENTS) {
+      assert.ok(!EVENTS.some((event) => event.id === incident.id), `id совпадает с плановым событием: ${incident.id}`)
+    }
+  })
+
+  it('у каждого ЧП ровно 1 опция, эффект ⊆ {cashRate, delayDays}, данные непустые', () => {
+    for (const incident of INCIDENTS) {
+      assert.equal(incident.options.length, 1, `${incident.id}: ожидается 1 опция`)
+      assert.ok(incident.eyebrow && incident.title && incident.text, `${incident.id}: пустые заголовки/текст`)
+      const option = incident.options[0]
+      assert.ok(option.label && option.outcome, `${incident.id}: нет label/outcome`)
+      for (const key of Object.keys(option.effect)) {
+        assert.ok(['cashRate', 'delayDays'].includes(key), `${incident.id}: недопустимый эффект «${key}»`)
+      }
+    }
+  })
+
+  it('каждый id ЧП присутствует в EVENT_ART', () => {
+    for (const incident of INCIDENTS) {
+      const art = EVENT_ART[incident.id]
+      assert.ok(art, `нет портрета для ${incident.id}`)
+      assert.ok(IMAGES.includes(art), `${incident.id}: неизвестная картинка «${art}»`)
+    }
+  })
+})
+
+describe('ЧП: resolveEvent', () => {
+  it('site_theft: списывает round(money × 0.04) и снимает паузу', () => {
+    const state = freshState()
+    state.money = 1_000_000
+    state.paused = true
+    state.event = 'site_theft'
+    const result = resolveEvent(state, 'site_theft', 0)
+    assert.equal(result.ok, true)
+    assert.equal(state.money, 1_000_000 - Math.round(1_000_000 * 0.04))
+    assert.equal(state.paused, false)
+    assert.equal(state.event, null)
+  })
+
+  it('opening_mistake: +2 дня ко всем срокам', () => {
+    const state = freshState()
+    const project = setupWorkingProject(state)
+    const before = project.job.deadline
+    const result = resolveEvent(state, 'opening_mistake', 0)
+    assert.equal(result.ok, true)
+    assert.equal(project.job.deadline, before + 2)
+    assert.equal(state.paused, false)
+  })
+
+  it('utility_damage: cashRate и delayDays применяются вместе', () => {
+    const state = freshState()
+    const project = setupWorkingProject(state)
+    state.money = 5_000_000
+    const before = project.job.deadline
+    const result = resolveEvent(state, 'utility_damage', 0)
+    assert.equal(result.ok, true)
+    assert.equal(state.money, 5_000_000 - Math.round(5_000_000 * 0.03))
+    assert.equal(project.job.deadline, before + 1)
+  })
+
+  it('ЧП с cashRate классифицируются в журнале как money', () => {
+    const state = freshState()
+    state.money = 1_000_000
+    const before = state.journal.length
+    resolveEvent(state, 'site_theft', 0)
+    const entry = state.journal.slice(before).find((item) => item.kind === 'money')
+    assert.ok(entry, 'нет записи kind=money в журнале')
+  })
+})
+
+describe('ЧП: детерминированный триггер', () => {
+  it('со 2-го сезона при активном проекте ЧП ставит паузу в течение 40 тиков', () => {
+    const state = createNewGame(3)
+    for (const bot of state.bots) {
+      bot.state = 'cooldown'
+      bot.cooldown = 9_999
+      bot.projects = []
+    }
+    state.seasonIndex = 0
+    const project = setupWorkingProject(state)
+    assert.ok(project)
+    state.seasonIndex = 1
+    state.day = 1
+    state.hour = 23
+    state.incidentCooldown = 0
+    state.paused = false
+    let fired = false
+    let guard = 0
+    while (guard < 40 && !fired) {
+      tickHour(state)
+      guard += 1
+      fired = state.event !== null && INCIDENTS.some((incident) => incident.id === state.event)
+    }
+    assert.equal(fired, true, 'ЧП не сработало за 40 тиков')
+    assert.ok(INCIDENTS.some((incident) => incident.id === state.event), `state.event = ${state.event}`)
+    assert.equal(state.paused, true, 'ЧП должно ставить игру на паузу')
   })
 })

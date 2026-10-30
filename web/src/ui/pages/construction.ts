@@ -1,5 +1,5 @@
 import { buildingById, equipmentById, materialById } from '../../game/catalog'
-import { hasProvisions, inventoryQty, maxCrews, missingProvisions, projectEquipmentBonus, projectReservedQty, requiredCrews } from '../../game/engine'
+import { hasProvisions, inventoryQty, maxCrews, missingProvisions, projectEquipmentBonus, projectReservedQty, projectWorkers, requiredCrews } from '../../game/engine'
 import { forecastProject, projectBlockReason, projectCosts, projectProgress } from '../../game/selectors'
 import { badge, emptyState, money, number, pageHeading, percent, progress } from '../components'
 import { icon } from '../icons'
@@ -30,7 +30,7 @@ function renderProject(ctx: ViewContext, project: Project): string {
   const provisionText = hasProvisions(state) ? 'Sites fully equipped' : `Need to buy: ${Object.keys(missingProvision).length} items`
   const equipmentBonus = projectEquipmentBonus(state, project)
   return `<section class="card project-workspace">
-    <div class="project-header"><div class="project-identity"><span class="building-mark large">${def.short}</span><div><div class="eyebrow">${project.job.client}</div><h2>${def.name}</h2><p>Contract ${money(project.job.budget)} · delivery by day ${project.job.deadline}</p></div></div><div class="project-header-badges">${project.job.special ? badge('Special project', 'warning') : ''}${badge(project.started ? 'Active construction' : 'Preparation', project.started ? 'success' : 'warning')}${state.day > project.job.deadline ? badge('Overdue', 'danger') : badge(`${project.job.deadline - state.day} days left`, 'neutral')}</div></div>
+    <div class="project-header"><div class="project-identity"><span class="building-mark large">${def.short}</span><div><div class="eyebrow">${project.job.client}</div><h2>${def.name}</h2><p>Contract ${money(project.job.budget)} · delivery by day ${project.job.deadline}</p></div></div><div class="project-header-badges">${def.minSiteWorkers ? badge(`Workers ${projectWorkers(state, project).length} / ${def.minSiteWorkers}`, projectWorkers(state, project).length >= def.minSiteWorkers ? 'success' : 'danger') : ''}${project.job.special ? badge('Special project', 'warning') : ''}${badge(project.started ? 'Active construction' : 'Preparation', project.started ? 'success' : 'warning')}${state.day > project.job.deadline ? badge('Overdue', 'danger') : badge(`${project.job.deadline - state.day} days left`, 'neutral')}</div></div>
     <div class="project-progress-row">${progress(projectProgress(project), 'Project readiness')}<div class="forecast ${forecast.onTime ? 'positive' : 'negative'}">${icon('clock')}<div><strong>≈ ${forecast.days} work days</strong><span>${forecast.onTime ? 'On schedule' : 'Risk of delay'}</span></div></div></div>
     <div class="stage-stepper">${def.stages.map((item, index) => {
       const status = project.stages[index].status

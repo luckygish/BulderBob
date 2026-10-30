@@ -1,6 +1,6 @@
 import { BALANCE } from './balance'
 import { EQUIPMENT, PROVISIONS, buildingById, materialById } from './catalog'
-import { crewEfficiency, frontPrice, inventoryQty, isDebtBlocked, isResearched, maxCrews, maxProjects, missingProvisions, netWorth, nightEfficiency, projectEquipmentReady, projectWorkers, requiredCrews } from './engine'
+import { crewEfficiency, frontPrice, inventoryQty, isDebtBlocked, isResearched, maxCrews, maxProjects, missingProvisions, netWorth, nightEfficiency, projectEquipmentReady, projectSiteStaffed, projectWorkers, requiredCrews } from './engine'
 import { currentSeason, seasonFoundationManHours, seasonMaintenanceRate, seasonMaterialPriceRate, seasonWageRate, workDayEnd } from './seasons'
 import type { GameState, Job, MaterialId, Project } from './types'
 
@@ -60,6 +60,7 @@ export function projectBlockReason(state: GameState, project: Project): string {
   const needCrews = requiredCrews(project)
   const assigned = project.crewIds.filter((crewId) => crewId >= 0 && crewId < maxCrews(state) && state.crews[crewId].workers.length > 0).length
   if (assigned < needCrews) return needCrews > 1 ? `Need two crews (${assigned}/2)` : 'Need a crew'
+  if (!projectSiteStaffed(state, project)) return `Need ${buildingById(project.job.building).minSiteWorkers} workers on site (${projectWorkers(state, project).length} assigned)`
   if (!projectEquipmentReady(state, project)) {
     const stage = buildingById(project.job.building).stages[project.currentStage]
     return `Need equipment: ${stage.requiredEquipment?.map((id) => EQUIPMENT.find((item) => item.id === id)?.name).join(' or ')}`

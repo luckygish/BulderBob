@@ -1083,5 +1083,164 @@ export const EVENTS: EventDef[] = [
 ]
 
 export function eventById(id: string): EventDef {
-  return EVENTS.find((event) => event.id === id)!
+  return EVENTS.find((event) => event.id === id) ?? INCIDENTS.find((event) => event.id === id)!
 }
+
+export const INCIDENTS: EventDef[] = [
+  {
+    id: 'opening_mistake', season: 1, day: 1,
+    eyebrow: 'Call from the site', title: 'Wrong opening sizes',
+    text: 'The crew cut the door and window openings too large. The masonry around them has to be rebuilt before the next stage.',
+    options: [
+      {
+        label: 'Rework the openings', hint: '+2 days to all deadlines',
+        effect: { delayDays: 2 },
+        outcome: 'The openings were refitted — two days were lost.',
+      },
+    ],
+  },
+  {
+    id: 'tool_breakdown', season: 1, day: 1,
+    eyebrow: 'Morning at the site', title: 'Troweling machine breakdown',
+    text: 'The troweling machine gave up: the bearings burned out. A replacement part is on the way, but the screed is waiting.',
+    options: [
+      {
+        label: 'Wait for the part', hint: '+1 day to all deadlines',
+        effect: { delayDays: 1 },
+        outcome: 'The machine was fixed in a day.',
+      },
+    ],
+  },
+  {
+    id: 'fence_repair', season: 1, day: 1,
+    eyebrow: 'Around the site', title: 'Fence damaged',
+    text: 'A truck backed into the site fence and knocked down several panels. The neighbors demand it be fixed right away.',
+    options: [
+      {
+        label: 'Repair the fence', hint: '+1 day to all deadlines',
+        effect: { delayDays: 1 },
+        outcome: 'The fence is repaired, the neighbors are calm.',
+      },
+    ],
+  },
+  {
+    id: 'site_theft', season: 2, day: 1,
+    eyebrow: 'Night incident', title: 'Materials stolen',
+    text: 'Over the night, thieves carried part of the building materials off the fenced area. The loss is small, but the money is gone.',
+    options: [
+      {
+        label: 'Count the losses', hint: '−4% of cash',
+        effect: { cashRate: 0.04 },
+        outcome: 'The theft was written off as losses.',
+      },
+    ],
+  },
+  {
+    id: 'safety_fine', season: 2, day: 1,
+    eyebrow: 'Labor inspection', title: 'Safety violation fine',
+    text: 'The labor inspector found open wiring and missing guardrails on the site. A fine was issued on the spot.',
+    options: [
+      {
+        label: 'Pay the fine', hint: '−2.5% of cash',
+        effect: { cashRate: 0.025 },
+        outcome: 'The fine is paid and the site passes the next inspection.',
+      },
+    ],
+  },
+  {
+    id: 'concrete_frost', season: 2, day: 1,
+    eyebrow: 'Winter site', title: 'Concrete not hardened',
+    text: 'The frost got to the freshly poured foundation: the concrete did not gain strength. It must be warmed and protected.',
+    options: [
+      {
+        label: 'Protect and wait', hint: '+2 days to all deadlines',
+        effect: { delayDays: 2 },
+        outcome: 'The foundation cured to the required strength.',
+      },
+    ],
+  },
+  {
+    id: 'rework_acceptance', season: 3, day: 1,
+    eyebrow: 'Client\'s complaint', title: 'Finishing rejected',
+    text: 'The client rejected the finishing: the seams and corners are not up to standard. Everything has to be redone.',
+    options: [
+      {
+        label: 'Redo the works', hint: '+2 days to all deadlines',
+        effect: { delayDays: 2 },
+        outcome: 'The finishing was redone to the client\'s taste.',
+      },
+    ],
+  },
+  {
+    id: 'permit_fine', season: 3, day: 1,
+    eyebrow: 'City administration', title: 'Site order fine',
+    text: 'The administration fined the company for a mess on the construction site: scattered materials and no waste bins.',
+    options: [
+      {
+        label: 'Pay the fine', hint: '−3% of cash',
+        effect: { cashRate: 0.03 },
+        outcome: 'The fine is paid and the site is put in order.',
+      },
+    ],
+  },
+  {
+    id: 'damaged_material', season: 4, day: 1,
+    eyebrow: 'Receiving at the yard', title: 'Damaged delivery',
+    text: 'Part of the delivered load turned out to be damaged in transit: cracks and scrapes make it unusable.',
+    options: [
+      {
+        label: 'Write it off', hint: '−3% of cash',
+        effect: { cashRate: 0.03 },
+        outcome: 'The damage was written off at your expense.',
+      },
+    ],
+  },
+  {
+    id: 'crane_parts', season: 4, day: 1,
+    eyebrow: 'Equipment service', title: 'Crane parts on order',
+    text: 'The crane needs a replacement part, and the delivery is delayed. The crane stands idle until it arrives.',
+    options: [
+      {
+        label: 'Wait for the part', hint: '+3 days to all deadlines',
+        effect: { delayDays: 3 },
+        outcome: 'The part arrived and the crane is back in operation.',
+      },
+    ],
+  },
+  {
+    id: 'utility_damage', season: 5, day: 1,
+    eyebrow: 'Utility services', title: 'Cable line cut',
+    text: 'The excavator cut a cable line on the site. The utility company demands compensation for the repair.',
+    options: [
+      {
+        label: 'Pay the utility bill', hint: '−3% of cash · +1 day',
+        effect: { cashRate: 0.03, delayDays: 1 },
+        outcome: 'The line is repaired and the work goes on with a day lost.',
+      },
+    ],
+  },
+  {
+    id: 'screed_rework', season: 5, day: 1,
+    eyebrow: 'Quality control', title: 'Screed redone',
+    text: 'The floor screed cracked as it dried. Part of it has to be torn out and poured again — materials and hours are wasted.',
+    options: [
+      {
+        label: 'Redo the screed', hint: '−2% of cash · +1 day',
+        effect: { cashRate: 0.02, delayDays: 1 },
+        outcome: 'The screed was repoured and leveled.',
+      },
+    ],
+  },
+  {
+    id: 'waste_fee', season: 6, day: 1,
+    eyebrow: 'Ecology service', title: 'Forced waste removal',
+    text: 'The ecology service ordered an immediate removal of construction waste from the site. The hauler charges extra for urgency.',
+    options: [
+      {
+        label: 'Pay for the hauling', hint: '−2.5% of cash',
+        effect: { cashRate: 0.025 },
+        outcome: 'The site is clean and the service is satisfied.',
+      },
+    ],
+  },
+]

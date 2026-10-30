@@ -145,6 +145,7 @@ async function importLegacy(): Promise<void> {
       if (state.version === 2) state = migrateV2(state)
       if (state.version === 3) state = migrateV3(state)
       if (state.version === 4) state = migrateV4(state)
+      if (state.version === 5) state = migrateV5(state)
       await current.write(LEGACY_FILE, JSON.stringify(state))
     }
   } catch {
@@ -172,7 +173,7 @@ export async function listSaves(): Promise<SaveMeta[]> {
 
 function readMeta(file: string, raw: string): SaveMeta | null {
   const state = JSON.parse(raw) as GameState
-  if (state.version !== BALANCE.version || !Array.isArray(state.projects)) return null
+  if ((state.version < 1 || state.version > BALANCE.version) || !Array.isArray(state.projects)) return null
   return {
     file,
     savedAt: fileToTime(file),
@@ -214,9 +215,11 @@ export async function loadGame(file: string): Promise<GameState | null> {
     if (state.version === 2) state = migrateV2(state)
     if (state.version === 3) state = migrateV3(state)
     if (state.version === 4) state = migrateV4(state)
+    if (state.version === 5) state = migrateV5(state)
     if (state.version !== BALANCE.version || !Array.isArray(state.projects) || !Array.isArray(state.jobs)) return null
     state.event ??= null
     state.eventsFired ??= []
+    state.incidentCooldown ??= 0
     state.seasonPriceBonus ??= 0
     state.seasonDeadlineBonus ??= 0
     state.seasonWageBonus ??= 0
@@ -304,7 +307,7 @@ function migrateV3(state: GameState): GameState {
 }
 
 function migrateV4(state: GameState): GameState {
-  state.version = BALANCE.version
+  state.version = 5
   for (const bot of state.bots) {
     const legacy = bot as Bot & { project?: BotProject }
     if (!Array.isArray(bot.projects)) bot.projects = legacy.project ? [legacy.project] : []
@@ -313,5 +316,29 @@ function migrateV4(state: GameState): GameState {
   }
   delete state.research['planning_2']
   delete state.research['planning_3']
+  return state
+}
+
+function migrateV5(state: GameState): GameState {
+  state.version = BALANCE.version
+  const scaleQty = (value: number): number => value * 1_000
+  const scalePrice = (value: number): number => value / 1_000
+  for (const lot of state.suppliers.north.rebar) { lot.qty = scaleQty(lot.qty); lot.initialQty = scaleQty(lot.initialQty); lot.price = scalePrice(lot.price) }
+  for (const lot of state.suppliers.south.rebar) { lot.qty = scaleQty(lot.qty); lot.initialQty = scaleQty(lot.initialQty); lot.price = scalePrice(lot.price) }
+  for (const batch of state.inventory.rebar) { batch.qty = scaleQty(batch.qty); batch.unitCost = scalePrice(batch.unitCost) }
+  for (const delivery of state.deliveries) {
+    for (const item of delivery.items) {
+      if (item.material === 'rebar') { item.qty = scaleQty(item.qty); item.unitCost = scalePrice(item.unitCost) }
+    }
+  }
+  state.priceHistory.rebar = state.priceHistory.rebar.map(scalePrice)
+  for (const project of [...state.projects, ...state.completed]) {
+    project.removedCrews ??= []
+    project.siteStaffExempt = true
+    for (const batch of project.reserved.rebar ?? []) { batch.qty = scaleQty(batch.qty); batch.unitCost = scalePrice(batch.unitCost) }
+    for (const stage of project.stages) {
+      if (stage.stock.rebar) { stage.stock.rebar.qty = scaleQty(stage.stock.rebar.qty); stage.stock.rebar.unitCost = scalePrice(stage.stock.rebar.unitCost) }
+    }
+  }
   return state
 }

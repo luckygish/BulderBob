@@ -10,7 +10,7 @@ export type Speed = 1 | 2 | 4
 
 export interface MaterialDef { id: MaterialId; name: string; short: string; unit: string; basePrice: number; stockMax: number; stockMin: number; dailyDemand: number }
 export interface StageDef { id: string; name: string; materials: Partial<Record<MaterialId, number>>; manHours: number; requiredEquipment?: EquipmentId[]; equipmentBonus?: Partial<Record<EquipmentId, number>> }
-export interface BuildingDef { id: BuildingId; name: string; short: string; budgetMin: number; budgetMax: number; minReputation: number; stages: StageDef[]; special?: boolean; requiredCrews?: number; reputationReward?: number; requiredLicense?: 'city' | 'region' }
+export interface BuildingDef { id: BuildingId; name: string; short: string; budgetMin: number; budgetMax: number; minReputation: number; stages: StageDef[]; special?: boolean; requiredCrews?: number; reputationReward?: number; requiredLicense?: 'city' | 'region'; minSiteWorkers?: number }
 export interface WorkerDef { name: string; efficiency: number; rateMin: number; rateMax: number; teamBonus: number }
 export interface EquipmentDef { id: EquipmentId; name: string; description: string; price: number; rentPerHour: number; minRentHours: number }
 export interface ProvisionDef { id: ProvisionId; name: string; description: string; price: number }
@@ -29,6 +29,8 @@ export interface Project {
   reserved: Partial<Record<MaterialId, InventoryBatch[]>>
   autoAdvance: boolean
   started: boolean
+  removedCrews?: number[]
+  siteStaffExempt?: boolean
   materialCost: number
   laborCost: number
   laborPaid: number
@@ -46,7 +48,7 @@ export interface Worker { id: string; name: string; type: WorkerType; rate: numb
 export interface Crew { workers: Worker[] }
 export interface Lot { qty: number; initialQty: number; price: number; arrivedDay: number }
 export interface DeliveryItem { material: MaterialId; qty: number; unitCost: number }
-export interface Delivery { id: string; supplier: SupplierId; arriveDay: number; items: DeliveryItem[]; fee: number; projectId?: string }
+export interface Delivery { id: string; supplier: SupplierId; arriveDay: number; arriveHour?: number; items: DeliveryItem[]; fee: number; projectId?: string }
 export interface EquipmentAsset {
   assetId: string
   id: EquipmentId
@@ -75,7 +77,7 @@ export interface EventOption {
   label: string
   hint?: string
   requiresReputation?: number
-  effect: { cash?: number; reputation?: number; delayDays?: number; seasonPriceBonus?: number; seasonDeadlineBonus?: number; seasonWageBonus?: number }
+  effect: { cash?: number; reputation?: number; delayDays?: number; seasonPriceBonus?: number; seasonDeadlineBonus?: number; seasonWageBonus?: number; cashRate?: number }
   outcome: string
 }
 export interface EventDef {
@@ -131,11 +133,12 @@ export interface GameState {
   financeHistory: FinanceSnapshot[]
   event: string | null
   eventsFired: string[]
+  incidentCooldown: number
   seasonPriceBonus: number
   seasonDeadlineBonus: number
   seasonWageBonus: number
   corpFinalChoice: 'sold' | 'fight' | null
 }
 
-export interface Quote { qty: number; cost: number; fee: number; total: number; arriveDay: number; available: number }
+export interface Quote { qty: number; cost: number; fee: number; total: number; arriveDay: number; arriveHour: number; available: number }
 export interface ActionResult { ok: boolean; message: string }

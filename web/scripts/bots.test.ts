@@ -100,7 +100,7 @@ describe('боты: параллельные объекты', () => {
 })
 
 describe('кадры: доска кандидатов', () => {
-  it('пополняется раз в 3 дня, а не ежедневно', () => {
+  it('пополняется раз в 5 дней, а не ежедневно', () => {
     const state = createNewGame(21)
     state.bots.forEach((bot) => {
       bot.state = 'cooldown'
@@ -110,7 +110,14 @@ describe('кадры: доска кандидатов', () => {
     state.candidates = []
     tickDays(state, 1)
     assert.equal(state.candidates.length, 0, 'до рестока кандидаты не должны появляться')
-    while (state.day % BALANCE.restockDays !== 0) tickHour(state)
+    let guard = 0
+    while (state.day % BALANCE.restockDays !== 0 && guard < 130) {
+      if (state.paused) state.paused = false
+      if (state.event) state.event = null
+      tickHour(state)
+      guard += 1
+    }
+    assert.equal(state.day % BALANCE.restockDays, 0, 'не дошли до дня рестока')
     assert.ok(state.candidates.length >= BALANCE.minCandidates, `на день рестока кандидатов ${state.candidates.length} < ${BALANCE.minCandidates}`)
   })
 })

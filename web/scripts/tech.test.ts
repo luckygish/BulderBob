@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { BALANCE } from '../src/game/balance'
-import { PROVISIONS, TECHNOLOGIES, buildingById, equipmentById, techById } from '../src/game/catalog'
+import { PROVISIONS, TECHNOLOGIES, WORKER_TYPES, buildingById, equipmentById, techById } from '../src/game/catalog'
 import { acquireEquipment, assignEquipment, chargeObligation, createJob, createNewGame, hasStageMaterials, isDebtBlocked, overdraftLimit, sellEquipment, spend, startStage, tickHour, workerBonus } from '../src/game/engine'
 import { assignCrew, buyMissingForProject, buyProvision, hireWorker, startFullProject, takeJob } from '../src/game/actions'
 import { seasonMaterialPriceRate, seasonNightWageMultiplier } from '../src/game/seasons'
@@ -25,6 +25,17 @@ function fakeProject(): Project {
   }
 }
 
+function waitForDeliveries(state: GameState): void {
+  let guard = 0
+  while (state.deliveries.length > 0 && guard < 5) {
+    if (state.paused) state.paused = false
+    if (state.event) state.event = null
+    tickHour(state)
+    guard += 1
+  }
+  assert.equal(state.deliveries.length, 0, 'поставки не прибыли за время ожидания')
+}
+
 function runProjectToCompletion(state: GameState): void {
   state.money = 50_000_000
   state.reputation = 90
@@ -42,6 +53,7 @@ function runProjectToCompletion(state: GameState): void {
   assert.equal(state.crews[0].workers.length, 3, 'бригада не укомплектована')
   assert.equal(assignCrew(state, project.id, 0, 0).ok, true)
   assert.equal(buyMissingForProject(state, project.id, 'north').ok, true)
+  waitForDeliveries(state)
   acquireEquipment(state, 'mixer', 'rented', 400)
   const mixer = state.equipment.at(-1)!
   assert.equal(assignEquipment(state, project, mixer.assetId).ok, true)
@@ -209,18 +221,79 @@ describe('технологии: новые бонусы и баланс', () => 
     assert.equal(state.money, before + Math.round(equipmentById('mixer').price * 0.85))
   })
 
-  it('каталог: 17 технологий, уникальные id, валидные требования и цены', () => {
-    assert.equal(TECHNOLOGIES.length, 17)
+  it('каталог: 18 технологий, уникальные id, валидные требования и цены', () => {
+    assert.equal(TECHNOLOGIES.length, 18)
     assert.equal(new Set(TECHNOLOGIES.map((tech) => tech.id)).size, TECHNOLOGIES.length)
     for (const tech of TECHNOLOGIES) {
       if (tech.requires) assert.ok(techById(tech.requires), `${tech.id}: требует несуществующее «${tech.requires}»`)
     }
-    assert.equal(techById('city_license').cost, 1_600_000)
-    assert.equal(techById('region_license').cost, 3_200_000)
+    assert.equal(techById('city_license').cost, 2_080_000)
+    assert.equal(techById('region_license').cost, 4_160_000)
     assert.equal(techById('automation').cost, 1_000_000)
     assert.equal(techById('automation').requiresMoney, 2_500_000)
+    assert.equal(techById('build_squad').requires, 'automation')
     for (const id of ['project_coordination', 'pr_department', 'manpower_reserve', 'reserve_fund']) assert.ok(techById(id), `нет технологии «${id}»`)
     assert.equal(buildingById('hospital').requiredLicense, 'city')
     assert.equal(buildingById('roads').requiredLicense, 'region')
+    assert.equal(buildingById('roads').minSiteWorkers, 8)
+    assert.equal(buildingById('ice_palace').minSiteWorkers, 8)
+    assert.equal(WORKER_TYPES.handyman.rateMin, 960)
+    assert.equal(WORKER_TYPES.foreman.rateMax, 2_760)
+  })
+
+  it('Строй-отряд: лимит бригады 5 человек', () => {
+    const state = createNewGame(50)
+    state.research.prof_standards = DONE
+    state.research.build_squad = DONE
+    for (let i = 0; i < 5 && state.candidates.length > 0; i += 1) {
+      const worker = state.candidates[0]
+      assert.equal(hireWorker(state, worker.id, 0).ok, true)
+    }
+    assert.equal(state.crews[0].workers.length, 5)
+    const sixth = state.candidates[0]
+    if (sixth) {
+      const result = hireWorker(state, sixth.id, 0)
+      assert.equal(result.ok, false)
+      assert.equal(state.crews[0].workers.length, 5)
+    }
+  })
+
+  it('Областной контракт требует 8 рабочих на объекте', () => {
+    const state = createNewGame(51)
+    state.money = 50_000_000
+    state.reputation = 90
+    state.research.prof_standards = DONE
+    state.research.build_squad = DONE
+    state.research.region_license = DONE
+    quietBots(state)
+    const job = createJob(state, 'roads')
+    state.jobs.push(job)
+    assert.equal(takeJob(state, job.id).ok, true)
+    const project = state.projects[0]
+    for (let crew = 0; crew < 2; crew += 1) {
+      while (state.crews[crew].workers.length < 3 && state.candidates.length > 0) {
+        const worker = state.candidates[0]
+        assert.equal(hireWorker(state, worker.id, crew).ok, true)
+      }
+      assignCrew(state, project.id, crew, crew)
+    }
+    const started = startStage(state, project)
+    assert.equal(started.ok, false)
+    assert.match(started.message, /requires 8 workers/i)
+  })
+
+  it('областной контракт нельзя взять без технологии Строй-отряд', () => {
+    const state = createNewGame(52)
+    state.money = 50_000_000
+    state.reputation = 90
+    state.research.prof_standards = DONE
+    state.research.region_license = DONE
+    quietBots(state)
+    const job = createJob(state, 'roads')
+    state.jobs.push(job)
+    const taken = takeJob(state, job.id)
+    assert.equal(taken.ok, false)
+    assert.match(taken.message, /workers on site/)
+    assert.equal(state.projects.length, 0)
   })
 })

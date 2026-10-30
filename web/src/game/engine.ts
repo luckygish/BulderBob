@@ -1,6 +1,6 @@
 import { BALANCE, LOAN_OPTIONS } from './balance'
 import { BUILDINGS, CLIENTS, MATERIALS, PROVISIONS, SKILLS, SUPPLIERS, WORKER_NAMES, WORKER_TYPES, buildingById, equipmentById, materialById, techById } from './catalog'
-import { EVENTS } from './events'
+import { EVENTS, INCIDENTS } from './events'
 import { nextId, pick, random, randomInt } from './rng'
 import { currentSeason, seasonFoundationManHours, seasonMaintenanceRate, seasonMaterialPriceRate, seasonNightEfficiencyRate, seasonNightWageMultiplier, seasonWageRate, workDayEnd, workdayHours } from './seasons'
 import type { ActionResult, Bot, BotProject, EquipmentAsset, EquipmentId, GameState, InventoryBatch, Job, Loan, MaterialId, Project, Quote, SkillId, StageState, SupplierId, Worker, WorkerType } from './types'
@@ -26,7 +26,7 @@ export function createNewGame(seed = Date.now()): GameState {
     provisions: Object.fromEntries(PROVISIONS.map((p) => [p.id, 0])) as GameState['provisions'],
     research: {}, loan: null, bots: [], journal: [], totalRevenue: 0,
     seasonIndex: 0, seasonCompleted: 0, seasonRevenue: 0, completedTutorial: [], equipmentSold: 0, usedSuppliers: [], seasonNotice: null,
-    companyName: 'Your company', companyAvatar: 0, financeHistory: [], event: null, eventsFired: [], seasonPriceBonus: 0, seasonDeadlineBonus: 0, seasonWageBonus: 0, corpFinalChoice: null,
+    companyName: 'Your company', companyAvatar: 0, financeHistory: [], event: null, eventsFired: [], incidentCooldown: 0, seasonPriceBonus: 0, seasonDeadlineBonus: 0, seasonWageBonus: 0, corpFinalChoice: null,
   }
   for (const supplier of ['north', 'south'] as SupplierId[]) {
     for (const material of MATERIALS) {
@@ -152,6 +152,12 @@ export function maxCrews(state: GameState): number {
   return isResearched(state, 'prof_standards') ? 2 : 1
 }
 
+export const MATERIAL_EPSILON = 1e-6
+
+export function maxCrewSize(state: GameState): number {
+  return isResearched(state, 'build_squad') ? BALANCE.maxCrewSizeSquad : BALANCE.maxCrewSize
+}
+
 export function workerBonus(state: GameState): number {
   const base = isResearched(state, 'prof_standards') ? 0.45 : isResearched(state, 'worker_training') ? 0.25 : 0
   return base + (isResearched(state, 'manpower_reserve') ? 0.15 : 0)
@@ -206,7 +212,7 @@ export function frontPrice(state: GameState, material: MaterialId, supplier: Sup
 
 export function quoteMaterial(state: GameState, material: MaterialId, quantity: number, supplier: SupplierId): Quote {
   const available = stockQty(state, material, supplier)
-  let remaining = Math.min(Math.max(0, Math.floor(quantity)), available)
+  let remaining = Math.min(Math.max(0, quantity), available)
   const qty = remaining
   let cost = 0
   for (const lot of state.suppliers[supplier][material]) {
@@ -217,7 +223,18 @@ export function quoteMaterial(state: GameState, material: MaterialId, quantity: 
   }
   const seasonalCost = Math.round(cost * (1 + seasonMaterialPriceRate(state)))
   const fee = Math.round(seasonalCost * SUPPLIERS[supplier].feeRate)
-  return { qty, cost: seasonalCost, fee, total: seasonalCost + fee, arriveDay: state.day + SUPPLIERS[supplier].deliveryDays, available }
+  const def = SUPPLIERS[supplier]
+  let arriveDay: number
+  let arriveHour: number
+  if (def.deliveryHours > 0) {
+    const total = state.hour + def.deliveryHours
+    arriveDay = state.day + Math.floor(total / 24)
+    arriveHour = total % 24
+  } else {
+    arriveDay = state.day + def.deliveryDays
+    arriveHour = 0
+  }
+  return { qty, cost: seasonalCost, fee, total: seasonalCost + fee, arriveDay, arriveHour, available }
 }
 
 function deductLots(state: GameState, material: MaterialId, supplier: SupplierId, quantity: number): void {
@@ -271,7 +288,9 @@ export function warehouseCost(state: GameState): number {
 export function warehouseStorageRate(state: GameState): number {
   const totalUnits = MATERIALS.reduce((sum, material) => sum + inventoryQty(state, material.id), 0)
   if (totalUnits <= 0) return 0
-  return totalUnits <= BALANCE.storageFeeTier1 ? BALANCE.storageFeeRateMaxQty : BALANCE.storageFeeRateOver
+  if (totalUnits <= BALANCE.storageFeeTier1) return BALANCE.storageFeeRateMaxQty
+  if (totalUnits <= BALANCE.storageFeeTier2) return BALANCE.storageFeeRateMid
+  return BALANCE.storageFeeRateOver
 }
 
 export function warehouseStorageFee(state: GameState): number {
@@ -329,14 +348,15 @@ export function purchaseMaterial(state: GameState, material: MaterialId, quantit
   state.demand[supplier][material] += quantity
   if (!state.usedSuppliers.includes(supplier)) state.usedSuppliers.push(supplier)
   const unitCost = Math.round(quote.cost / quantity)
-  if (quote.arriveDay <= state.day) {
+  const arrived = quote.arriveDay < state.day || (quote.arriveDay === state.day && quote.arriveHour <= state.hour)
+  if (arrived) {
     if (project) addProjectInventory(project, material, quantity, unitCost)
     else storeWarehouseCapped(state, material, quantity, unitCost)
   } else {
-    state.deliveries.push({ id: nextId(state, 'delivery'), supplier, arriveDay: quote.arriveDay, items: [{ material, qty: quantity, unitCost }], fee: actualFee, projectId: project?.id })
+    state.deliveries.push({ id: nextId(state, 'delivery'), supplier, arriveDay: quote.arriveDay, arriveHour: quote.arriveHour, items: [{ material, qty: quantity, unitCost }], fee: actualFee, projectId: project?.id })
   }
   addLog(state, `Bought: ${materialById(material).name}, ${quantity} ${materialById(material).unit} · $${(quote.cost + actualFee).toLocaleString('en-US')}.`, 'money')
-  return { ok: true, message: quote.arriveDay === state.day ? (project ? 'Materials reserved for the project.' : 'Materials are already in the warehouse.') : `Delivery arrives on day ${quote.arriveDay}.` }
+  return { ok: true, message: arrived ? (project ? 'Materials reserved for the project.' : 'Materials are already in the warehouse.') : quote.arriveHour > 0 ? `Delivery arrives on day ${quote.arriveDay}, ${quote.arriveHour}:00.` : `Delivery arrives on day ${quote.arriveDay}.` }
 }
 
 export function takeFromInventory(state: GameState, material: MaterialId, quantity: number): { qty: number; cost: number } {
@@ -399,14 +419,14 @@ export function allocateStage(state: GameState, project: Project, stageIndex: nu
 
 export function hasStageMaterials(project: Project, stageIndex: number): boolean {
   const def = buildingById(project.job.building).stages[stageIndex]
-  return (Object.entries(def.materials) as [MaterialId, number][]).every(([material, qty]) => (project.stages[stageIndex].stock[material]?.qty ?? 0) >= qty)
+  return (Object.entries(def.materials) as [MaterialId, number][]).every(([material, qty]) => ((project.stages[stageIndex].stock[material]?.qty ?? 0) - qty) >= -MATERIAL_EPSILON)
 }
 
 export function stageMissingMaterials(project: Project, stageIndex: number): [MaterialId, number][] {
   const def = buildingById(project.job.building).stages[stageIndex]
   const stage = project.stages[stageIndex]
   return (Object.entries(def.materials) as [MaterialId, number][])
-    .map(([material, required]) => [material, Math.max(0, required - (stage.stock[material]?.qty ?? 0))] as [MaterialId, number])
+    .map(([material, required]) => [material, Math.max(0, required - (stage.stock[material]?.qty ?? 0) - MATERIAL_EPSILON)] as [MaterialId, number])
     .filter(([, qty]) => qty > 0)
 }
 
@@ -451,11 +471,37 @@ export function projectEquipmentBonus(state: GameState, project: Project): numbe
   return base * (1 + projectEquipmentSkillRate(state, project))
 }
 
+export function projectSiteStaffed(state: GameState, project: Project): boolean {
+  if (project.siteStaffExempt) return true
+  const min = buildingById(project.job.building).minSiteWorkers
+  return min === undefined || projectWorkers(state, project).length >= min
+}
+
+export function autoAssignResources(state: GameState, project: Project): void {
+  const usedCrews = new Set(state.projects.filter((item) => item.id !== project.id).flatMap((item) => item.crewIds))
+  const required = requiredCrews(project)
+  const held = new Set(project.removedCrews ?? [])
+  for (let i = 0; i < maxCrews(state) && project.crewIds.length < required; i += 1) {
+    if (!usedCrews.has(i) && !project.crewIds.includes(i) && !held.has(i) && state.crews[i].workers.length > 0) project.crewIds.push(i)
+  }
+  const stageDef = buildingById(project.job.building).stages[project.currentStage]
+  const requiredEquipment = stageDef?.requiredEquipment
+  if (!requiredEquipment?.length) return
+  const current = project.equipmentAssetId ? state.equipment.find((item) => item.assetId === project.equipmentAssetId) : undefined
+  if (current && requiredEquipment.includes(current.id) && (!current.projectId || current.projectId === project.id)) return
+  const candidate = state.equipment
+    .filter((asset) => !asset.projectId && requiredEquipment.includes(asset.id))
+    .sort((a, b) => (stageDef.equipmentBonus?.[b.id] ?? 0) - (stageDef.equipmentBonus?.[a.id] ?? 0))[0]
+  if (candidate) assignEquipment(state, project, candidate.assetId)
+}
+
 export function startStage(state: GameState, project: Project): ActionResult {
   if (isDebtBlocked(state)) return { ok: false, message: 'Construction halted: repay your obligations.' }
   if (project.currentStage >= project.stages.length) return { ok: false, message: 'All stages are complete.' }
   if (project.stages[project.currentStage].status === 'in_progress') return { ok: false, message: 'Stage is already under construction.' }
+  autoAssignResources(state, project)
   if (!projectCrewsReady(state, project)) return { ok: false, message: requiredCrews(project) > 1 ? 'Assign two non-empty crews.' : 'Assign a non-empty crew.' }
+  if (!projectSiteStaffed(state, project)) return { ok: false, message: `The ${buildingById(project.job.building).name} contract requires ${buildingById(project.job.building).minSiteWorkers} workers on site (now ${projectWorkers(state, project).length}).` }
   if (!projectEquipmentReady(state, project)) {
     const stage = buildingById(project.job.building).stages[project.currentStage]
     return { ok: false, message: `Assign equipment: ${stage.requiredEquipment?.map((id) => equipmentById(id).name).join(' or ')}.` }
@@ -488,7 +534,7 @@ export function nightEfficiency(state: GameState, hasOwl: boolean): number {
 
 function processProjectHour(state: GameState, project: Project): void {
   if (isDebtBlocked(state) || project.currentStage >= project.stages.length || project.stages[project.currentStage].status !== 'in_progress') return
-  if (!projectCrewsReady(state, project) || !canWorkNow(state, project) || !projectEquipmentReady(state, project)) return
+  if (!projectCrewsReady(state, project) || !canWorkNow(state, project) || !projectEquipmentReady(state, project) || !projectSiteStaffed(state, project)) return
   const workers = projectWorkers(state, project)
   if (workers.length === 0) return
   const dayEnd = workDayEnd(state)
@@ -510,6 +556,7 @@ function processProjectHour(state: GameState, project: Project): void {
     state.equipment = state.equipment.filter((item) => item !== asset)
     project.equipmentAssetId = null
     addLog(state, `Rental of ${equipmentById(asset.id).name} ended.`, 'warning')
+    autoAssignResources(state, project)
   }
   if (project.stages[project.currentStage].progress < 1) return
   project.stages[project.currentStage].progress = 1
@@ -520,6 +567,7 @@ function processProjectHour(state: GameState, project: Project): void {
     return
   }
   addLog(state, `${buildingById(project.job.building).name}: stage "${stageDef.name}" completed.`, 'success')
+  autoAssignResources(state, project)
   if (project.autoAdvance) startStage(state, project)
 }
 
@@ -552,15 +600,12 @@ function completeProject(state: GameState, project: Project): void {
   }
   state.projects = state.projects.filter((item) => item !== project)
   for (const asset of state.equipment) if (asset.projectId === project.id) asset.projectId = null
-  const nextProject = state.projects.find((item) => item.crewIds.length < requiredCrews(item))
-  if (nextProject) {
-    for (const crewId of project.crewIds) if (nextProject.crewIds.length < requiredCrews(nextProject)) nextProject.crewIds.push(crewId)
-  }
+  for (const item of state.projects) autoAssignResources(state, item)
   addLog(state, `Project delivered: ${def.name}. Profit $${project.profit.toLocaleString('en-US')}${lateDays ? `, penalty $${project.penalty.toLocaleString('en-US')}` : ''}.`, lateDays ? 'warning' : 'success')
 }
 
 function arriveDeliveries(state: GameState): void {
-  const arrived = state.deliveries.filter((delivery) => delivery.arriveDay <= state.day)
+  const arrived = state.deliveries.filter((delivery) => delivery.arriveDay < state.day || (delivery.arriveDay === state.day && (delivery.arriveHour ?? 0) <= state.hour))
   for (const delivery of arrived) {
     const project = delivery.projectId ? state.projects.find((item) => item.id === delivery.projectId) : undefined
     for (const item of delivery.items) {
@@ -569,7 +614,7 @@ function arriveDeliveries(state: GameState): void {
     }
     addLog(state, `Delivery from "${SUPPLIERS[delivery.supplier].name}" received${project ? ' into project reserve' : ' at warehouse'}.`, 'success')
   }
-  state.deliveries = state.deliveries.filter((delivery) => delivery.arriveDay > state.day)
+  state.deliveries = state.deliveries.filter((delivery) => delivery.arriveDay > state.day || (delivery.arriveDay === state.day && (delivery.arriveHour ?? 0) > state.hour))
 }
 
 function settleDailyObligations(state: GameState): void {
@@ -870,6 +915,14 @@ function dailyTick(state: GameState): void {
     state.paused = true
     addLog(state, `Event: "${eventDef.title}".`, 'warning')
   }
+  state.incidentCooldown = Math.max(0, state.incidentCooldown - 1)
+  if (!eventDef && state.seasonIndex >= 1 && state.projects.length > 0 && state.incidentCooldown <= 0 && random(state) < BALANCE.incidentChance) {
+    const incident = pick(state, INCIDENTS.filter((item) => item.season <= state.seasonIndex))
+    state.event = incident.id
+    state.paused = true
+    state.incidentCooldown = randomInt(state, BALANCE.incidentCooldownMin, BALANCE.incidentCooldownMax)
+    addLog(state, `Incident: "${incident.title}".`, 'warning')
+  }
   recordFinanceSnapshot(state)
 }
 
@@ -936,6 +989,7 @@ export function tickHour(state: GameState): void {
     if (state.day > BALANCE.seasonDays) transitionSeason(state)
     else dailyTick(state)
   }
+  arriveDeliveries(state)
   for (const project of [...state.projects]) processProjectHour(state, project)
 }
 
@@ -1020,7 +1074,7 @@ export function assignEquipment(state: GameState, project: Project, assetId: str
 }
 
 export function resolveEvent(state: GameState, eventId: string, optionIndex: number): ActionResult {
-  const def = EVENTS.find((event) => event.id === eventId)
+  const def = EVENTS.find((event) => event.id === eventId) ?? INCIDENTS.find((event) => event.id === eventId)
   if (!def) return { ok: false, message: 'Event not found.' }
   const option = def.options[optionIndex]
   if (!option) return { ok: false, message: 'Option not found.' }
@@ -1028,6 +1082,8 @@ export function resolveEvent(state: GameState, eventId: string, optionIndex: num
   const cost = option.effect.cash ?? 0
   if (cost < 0 && !spend(state, -cost)) return { ok: false, message: 'Not enough funds.' }
   if (cost > 0) state.money += cost
+  const cashRate = option.effect.cashRate ?? 0
+  if (cashRate > 0) state.money -= Math.round(state.money * cashRate)
   if (option.effect.reputation) state.reputation = Math.max(0, Math.min(100, state.reputation + option.effect.reputation))
   if (option.effect.delayDays) {
     for (const project of state.projects) project.job.deadline += option.effect.delayDays
@@ -1049,7 +1105,7 @@ export function resolveEvent(state: GameState, eventId: string, optionIndex: num
   if (def.id === 'corp_final') state.corpFinalChoice = optionIndex === 0 ? 'sold' : 'fight'
   state.event = null
   state.paused = false
-  const kind: GameState['journal'][number]['kind'] = cost < 0 ? 'money' : option.effect.reputation && option.effect.reputation < 0 ? 'warning' : option.effect.reputation ? 'success' : option.effect.delayDays ? 'warning' : 'info'
+  const kind: GameState['journal'][number]['kind'] = cost < 0 || cashRate > 0 ? 'money' : option.effect.reputation && option.effect.reputation < 0 ? 'warning' : option.effect.reputation ? 'success' : option.effect.delayDays ? 'warning' : 'info'
   addLog(state, `${def.title}: ${option.outcome}`, kind)
   return { ok: true, message: option.outcome }
 }

@@ -14,7 +14,7 @@ function projectOptions(ctx: ViewContext): string {
 
 function deliveriesNotice(ctx: ViewContext): string {
   if (!ctx.state.deliveries.length) return ''
-  return `<div class="notice notice-info">${icon('truck')}<div><strong>In transit: ${ctx.state.deliveries.length} deliveries</strong><span>${ctx.state.deliveries.map((delivery) => `day ${delivery.arriveDay} · ${delivery.items.reduce((sum, item) => sum + item.qty, 0)} units`).join(' | ')}</span></div></div>`
+  return `<div class="notice notice-info">${icon('truck')}<div><strong>In transit: ${ctx.state.deliveries.length} deliveries</strong><span>${ctx.state.deliveries.map((delivery) => `day ${delivery.arriveDay}${(delivery.arriveHour ?? 0) > 0 ? ` · ${delivery.arriveHour}:00` : ''} · ${delivery.items.reduce((sum, item) => sum + item.qty, 0)} units`).join(' | ')}</span></div></div>`
 }
 
 function renderWarehouse(ctx: ViewContext): string {
@@ -42,7 +42,7 @@ function renderSupplier(ctx: ViewContext): string {
   const { state } = ctx
   const supplier = ctx.supplier
   const def = SUPPLIERS[supplier]
-  return `<div class="market-toolbar card"><div class="segmented supplier-tabs">${supplierTabs(ctx)}</div><div class="delivery-note">${icon('truck')}<div><strong>${supplier === 'north' ? 'Delivery today' : 'Delivery tomorrow'}</strong><span>Logistics ${Math.round(def.feeRate * 100)}% of purchase</span></div></div></div>
+  return `<div class="market-toolbar card"><div class="segmented supplier-tabs">${supplierTabs(ctx)}</div><div class="delivery-note">${icon('truck')}<div><strong>${def.deliveryHours > 0 ? `Delivery in ${def.deliveryHours} hours` : 'Delivery tomorrow'}</strong><span>Logistics ${Math.round(def.feeRate * 100)}% of purchase</span></div></div></div>
     <section class="card quick-order"><div><div class="eyebrow">Quick purchase</div><h2>Collect what is missing for a project</h2><p>One check of stock, money and delivery for all remaining stages.</p></div><div class="quick-order-actions"><select data-change="market-project">${projectOptions(ctx)}</select><button class="btn btn-primary" data-action="buy-missing" ${!state.projects.length ? 'disabled' : ''}>${icon('box')} Buy missing</button></div></section>
     ${deliveriesNotice(ctx)}
     <section class="card table-card"><div class="table-scroll"><table class="data-table market-table"><thead><tr><th>Material</th><th>Price / unit</th><th>Yard stock</th><th>In warehouse</th><th>Quantity</th><th>Total with delivery</th><th></th></tr></thead><tbody>${MATERIALS.map((material) => {
@@ -52,14 +52,14 @@ function renderSupplier(ctx: ViewContext): string {
       const trend = price > previous ? 'up' : price < previous ? 'down' : 'flat'
       return `<tr><td data-label="Material"><div class="material-name"><span class="material-code">${material.short}</span><div><strong>${material.name}</strong><span>${material.unit}</span></div></div></td><td data-label="Price"><strong>${money(price)}</strong><span class="price-trend ${trend}">${trend === 'up' ? '↑ rising' : trend === 'down' ? '↓ falling' : '— stable'}</span></td><td data-label="Yard stock"><strong>${number(stock)}</strong><div class="stock-bar"><span style="width:${Math.min(100, stock / material.stockMax * 100)}%"></span></div></td><td data-label="Warehouse"><strong>${number(inventoryQty(state, material.id))}</strong><span class="muted">${material.unit}</span></td><td data-label="Quantity"><input class="qty-input" type="number" min="1" max="${stock}" value="10" inputmode="numeric" data-qty="${material.id}" aria-label="Quantity: ${material.name}" /></td><td data-label="Total"><strong data-quote="${material.id}">—</strong></td><td><button class="btn btn-small btn-secondary" data-action="buy-material" data-id="${material.id}" ${stock <= 0 ? 'disabled' : ''}>Buy</button></td></tr>`
     }).join('')}</tbody></table></div></section>
-    <div class="market-legend"><span>${badge('FIFO', 'info')} Old lots are sold first, so the total may differ from the first batch price.</span><span>Large purchases immediately raise prices on remaining stock.</span><span>Supplies recalculated every 3 days</span></div>`
+    <div class="market-legend"><span>${badge('FIFO', 'info')} Old lots are sold first, so the total may differ from the first batch price.</span><span>Large purchases immediately raise prices on remaining stock.</span><span>Supplies recalculated every ${BALANCE.restockDays} days</span></div>`
 }
 
 function supplierTabs(ctx: ViewContext): string {
   const active = ctx.marketTab
   const tabs = (Object.keys(SUPPLIERS) as SupplierId[]).map((id) => `<button class="${active === id ? 'active' : ''}" data-action="supplier" data-id="${id}"><strong>${SUPPLIERS[id].name}</strong><span>${SUPPLIERS[id].description}</span></button>`).join('')
   const warehouseTab: MarketTab = 'warehouse'
-  return `${tabs}<button class="${active === warehouseTab ? 'active' : ''}" data-action="supplier" data-id="warehouse"><strong>My warehouse</strong><span>Capacity ${BALANCE.warehouseCap} units/item · fee 0/${Math.round(BALANCE.storageFeeRateMaxQty * 100)}/${Math.round(BALANCE.storageFeeRateOver * 100)}%</span></button>`
+  return `${tabs}<button class="${active === warehouseTab ? 'active' : ''}" data-action="supplier" data-id="warehouse"><strong>My warehouse</strong><span>Capacity ${BALANCE.warehouseCap} units/item · fee 0/${Math.round(BALANCE.storageFeeRateMaxQty * 100)}/${(BALANCE.storageFeeRateMid * 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}/${Math.round(BALANCE.storageFeeRateOver * 100)}%</span></button>`
 }
 
 export function renderMarket(ctx: ViewContext): string {

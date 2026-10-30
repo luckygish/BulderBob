@@ -767,7 +767,7 @@ button.company-chip:hover { background: rgba(255,255,255,.085); }
 .start-logo .icon { width: 74px; height: 74px; }
 .start-shell .eyebrow { color: #7f939b; }
 .start-shell h1 { font-size: 44px; letter-spacing: -1.2px; color: #fff; margin: 4px 0 6px; }
-.start-shell > p { color: #9fb0b6; font-size: 12px; max-width: 330px; line-height: 1.6; }
+.start-shell > p { color: #dce5e5; font-size: 12px; max-width: 330px; line-height: 1.6; }
 .start-actions { display: flex; flex-direction: column; gap: 9px; width: 100%; max-width: 260px; margin-top: 18px; }
 .start-btn { width: 100%; min-height: 44px; font-size: 12px; border-radius: 9px; }
 .start-btn .icon { width: 17px; height: 17px; }

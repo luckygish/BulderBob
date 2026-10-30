@@ -20,7 +20,9 @@ function freshState(money = 100_000_000): GameState {
 
 function advanceToRestock(state: GameState): void {
   let guard = 0
-  while (state.day % BALANCE.restockDays !== 0 && guard < 60) {
+  while (state.day % BALANCE.restockDays !== 0 && guard < 130) {
+    if (state.paused) state.paused = false
+    if (state.event) state.event = null
     tickHour(state)
     guard += 1
   }
@@ -51,6 +53,46 @@ describe('рынок: стартовый сток и цены баз', () => {
     const expectedCost = Math.round(100 * Math.round(materialById('concrete').basePrice * 0.95) * (1 + seasonMaterialPriceRate(state)))
     assert.equal(quote.cost, expectedCost)
     assert.equal(quote.fee, Math.round(expectedCost * 0.05))
+  })
+})
+
+describe('рынок: доставка материалов', () => {
+  it('Север: котировка обещает прибытие через 3 часа, покупка создаёт поставку', () => {
+    const state = freshState()
+    state.hour = 10
+    const quote = quoteMaterial(state, 'concrete', 100, 'north')
+    assert.equal(quote.arriveDay, state.day)
+    assert.equal(quote.arriveHour, 13)
+    const job = createJob(state, 'reconstruction')
+    state.jobs.push(job)
+    assert.equal(takeJob(state, job.id).ok, true)
+    const project = state.projects[0]!
+    const result = purchaseMaterial(state, 'concrete', 100, 'north', project.id)
+    assert.equal(result.ok, true)
+    assert.match(result.message, /Delivery arrives on day \d+, 13:00/)
+    assert.equal(state.deliveries.length, 1)
+    assert.equal(state.deliveries[0].arriveDay, state.day)
+    assert.equal(state.deliveries[0].arriveHour, 13)
+    assert.equal(state.deliveries[0].projectId, project.id)
+    assert.equal((project.reserved.concrete ?? []).reduce((sum, batch) => sum + batch.qty, 0), 0, 'до прибытия поставки резерв пуст')
+    while (state.deliveries.length > 0) tickHour(state)
+    assert.equal((project.reserved.concrete ?? []).reduce((sum, batch) => sum + batch.qty, 0), 100, 'после прибытия материал в резерве')
+  })
+
+  it('Север: покупка в 23 часа переносит доставку на следующий день', () => {
+    const state = freshState()
+    state.hour = 23
+    const quote = quoteMaterial(state, 'concrete', 100, 'north')
+    assert.equal(quote.arriveDay, state.day + 1)
+    assert.equal(quote.arriveHour, 2)
+  })
+
+  it('Юг: котировка обещает доставку в начале следующего дня', () => {
+    const state = freshState()
+    state.hour = 23
+    const quote = quoteMaterial(state, 'concrete', 100, 'south')
+    assert.equal(quote.arriveDay, state.day + 1)
+    assert.equal(quote.arriveHour, 0)
   })
 })
 
@@ -112,7 +154,7 @@ describe('рынок: мгновенная реакция цены на масс
   })
 })
 
-describe('рынок: пересчёт поставок раз в 3 дня', () => {
+describe('рынок: пересчёт поставок раз в 5 дней', () => {
   it('нейтральный спрос: новый лот по базовой цене', () => {
     const state = freshState()
     state.demand.north.concrete = materialById('concrete').dailyDemand * BALANCE.restockDays
